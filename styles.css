@@ -377,7 +377,7 @@ body.zen-mode .content-area {
 
 .cm-selectionBackground,
 .cm-editor.cm-focused .cm-selectionBackground {
-    background: rgba(0, 120, 212, 0.2) !important;
+    background: rgba(0, 120, 212, 0.45) !important;
 }
 
 .cm-activeLine {
@@ -613,4 +613,59 @@ body.zen-mode .content-area {
     color: var(--text-muted);
     text-align: right;
     min-height: 14px;
+}
+
+/* ==========================================
+ * Feature: Mobile Responsive Layout Updates
+ * ========================================== */
+@media (max-width: 768px) {
+
+    /* Make toolbar scrollable and compact */
+    .toolbar {
+        padding: 0 8px;
+        height: 44px;
+    }
+
+    .toolbar button {
+        width: 36px;
+        /* Slightly larger targets for touch */
+        height: 36px;
+    }
+
+    /* Make tab bar more compact */
+    .tab-bar {
+        padding: 0 4px;
+        height: 36px;
+    }
+
+    .tab {
+        height: 30px;
+        margin-top: 6px;
+        min-width: 90px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
+    .tab-close {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Floating search modal responsive */
+    .search-modal {
+        width: 90%;
+        left: 5%;
+        right: 5%;
+        top: 8px;
+    }
+
+    /* Make status bar font smaller */
+    .status-bar {
+        padding: 0 8px;
+        font-size: 10px;
+    }
+
+    .status-bar .status-right {
+        gap: 8px;
+    }
 }

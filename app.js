@@ -1,6 +1,6 @@
 // Global CodeMirror 6 Dependencies
-let EditorState, Compartment, StateEffect;
-let EditorView, keymap, lineNumbers, highlightActiveLineGutter;
+let EditorState, Compartment, StateEffect, EditorSelection;
+let EditorView, keymap, lineNumbers, highlightActiveLineGutter, drawSelection;
 let defaultKeymap, history, historyKeymap, indentWithTab, undo, redo;
 let languages;
 let SearchCursor;
@@ -14,10 +14,10 @@ let fontConf;
 
 async function loadCM6() {
     const state = await import("https://esm.sh/@codemirror/state");
-    EditorState = state.EditorState; Compartment = state.Compartment; StateEffect = state.StateEffect;
+    EditorState = state.EditorState; Compartment = state.Compartment; StateEffect = state.StateEffect; EditorSelection = state.EditorSelection;
 
     const view = await import("https://esm.sh/@codemirror/view");
-    EditorView = view.EditorView; keymap = view.keymap; lineNumbers = view.lineNumbers; highlightActiveLineGutter = view.highlightActiveLineGutter;
+    EditorView = view.EditorView; keymap = view.keymap; lineNumbers = view.lineNumbers; highlightActiveLineGutter = view.highlightActiveLineGutter; drawSelection = view.drawSelection;
 
     const cmds = await import("https://esm.sh/@codemirror/commands");
     defaultKeymap = cmds.defaultKeymap; history = cmds.history; historyKeymap = cmds.historyKeymap; indentWithTab = cmds.indentWithTab; undo = cmds.undo; redo = cmds.redo;
@@ -46,6 +46,15 @@ async function loadCM6() {
 
 const STORAGE_KEY = 'webmemo_data';
 
+function detectInitialLanguage() {
+    const navLang = navigator.language.toLowerCase();
+    if (navLang.startsWith('ko')) return 'ko';
+    if (navLang.startsWith('ja')) return 'ja';
+    if (navLang.startsWith('zh-tw') || navLang.startsWith('zh-hk')) return 'zh-TW';
+    if (navLang.startsWith('zh')) return 'zh-CN';
+    return 'en'; // Fallback
+}
+
 // Default Data Structure
 let appData = {
     tabs: [
@@ -55,7 +64,7 @@ let appData = {
     theme: 'white',
     markdownMode: false,
     fontSize: 14,
-    uiLang: 'ko' // Default UI Language
+    uiLang: detectInitialLanguage() // Auto-detect UI Language
 };
 
 // ==========================================
@@ -95,7 +104,11 @@ const i18nDict = {
         'search-placeholder': '검색어 입력...',
         'replace-placeholder': '바꿀 내용...',
         'btn-replace': '바꾸기',
-        'btn-replace-all': '모두 바꾸기'
+        'btn-replace-all': '모두 바꾸기',
+        'stats-char': '글자',
+        'stats-word': '단어',
+        'stats-line': '줄',
+        'stats-col': '열'
     },
     'en': {
         'btn-new': 'New File (Ctrl+N)',
@@ -130,7 +143,11 @@ const i18nDict = {
         'search-placeholder': 'Find...',
         'replace-placeholder': 'Replace with...',
         'btn-replace': 'Replace',
-        'btn-replace-all': 'Replace All'
+        'btn-replace-all': 'Replace All',
+        'stats-char': 'Char',
+        'stats-word': 'Word',
+        'stats-line': 'Ln',
+        'stats-col': 'Col'
     },
     'ja': {
         'btn-new': '新規ファイル (Ctrl+N)',
@@ -165,7 +182,11 @@ const i18nDict = {
         'search-placeholder': '検索...',
         'replace-placeholder': '置換...',
         'btn-replace': '置換',
-        'btn-replace-all': 'すべて置換'
+        'btn-replace-all': 'すべて置換',
+        'stats-char': '文字',
+        'stats-word': '単語',
+        'stats-line': '行',
+        'stats-col': '列'
     },
     'zh-TW': {
         'btn-new': '新檔案 (Ctrl+N)',
@@ -200,7 +221,11 @@ const i18nDict = {
         'search-placeholder': '尋找...',
         'replace-placeholder': '取代為...',
         'btn-replace': '取代',
-        'btn-replace-all': '全部取代'
+        'btn-replace-all': '全部取代',
+        'stats-char': '字元',
+        'stats-word': '單字',
+        'stats-line': '行',
+        'stats-col': '列'
     },
     'zh-CN': {
         'btn-new': '新文件 (Ctrl+N)',
@@ -235,7 +260,11 @@ const i18nDict = {
         'search-placeholder': '查找...',
         'replace-placeholder': '替换为...',
         'btn-replace': '替换',
-        'btn-replace-all': '全部替换'
+        'btn-replace-all': '全部替换',
+        'stats-char': '字符',
+        'stats-word': '单词',
+        'stats-line': '行',
+        'stats-col': '列'
     }
 };
 
@@ -329,6 +358,17 @@ function applyLanguage(langCode) {
     if (uiLangSelect) uiLangSelect.value = langCode;
 
     appData.uiLang = langCode;
+
+    // Force stats update on language change
+    if (cm) {
+        updateStats();
+        // Force cursor coordinate string translation update
+        const head = cm.state.selection.main.head;
+        const line = cm.state.doc.lineAt(head);
+        const strLine = i18nDict[appData.uiLang]['stats-line'] || 'Ln';
+        const strCol = i18nDict[appData.uiLang]['stats-col'] || 'Col';
+        cursorPosEl.textContent = `${strLine}: ${line.number} | ${strCol}: ${head - line.from + 1}`;
+    }
 }
 
 // Language Map for Auto Detection
@@ -385,6 +425,7 @@ function initCodeMirror() {
             extensions: [
                 lineNumbers(),
                 highlightActiveLineGutter(),
+                drawSelection(),
                 history(),
                 bracketMatching(),
                 closeBrackets(),
@@ -394,6 +435,7 @@ function initCodeMirror() {
                 readOnlyConf.of(EditorState.readOnly.of(false)),
                 themeConf.of([]),
                 fontConf.of([]),
+                EditorState.allowMultipleSelections.of(true),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
@@ -411,7 +453,9 @@ function initCodeMirror() {
                     if (update.selectionSet || update.docChanged) {
                         const head = update.state.selection.main.head;
                         const line = update.state.doc.lineAt(head);
-                        cursorPosEl.textContent = `줄: ${line.number} | 열: ${head - line.from + 1}`;
+                        const strLine = i18nDict[appData.uiLang]['stats-line'] || 'Ln';
+                        const strCol = i18nDict[appData.uiLang]['stats-col'] || 'Col';
+                        cursorPosEl.textContent = `${strLine}: ${line.number} | ${strCol}: ${head - line.from + 1}`;
                     }
                 }),
                 EditorView.domEventHandlers({
@@ -435,8 +479,10 @@ function updateStats() {
     const text = cm.state.doc.toString();
     const chars = text.length;
     const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-    charCountEl.textContent = `글자: ${chars}`;
-    wordCountEl.textContent = `단어: ${words}`;
+    const strChar = i18nDict[appData.uiLang]['stats-char'] || 'Char';
+    const strWord = i18nDict[appData.uiLang]['stats-word'] || 'Word';
+    charCountEl.textContent = `${strChar}: ${chars}`;
+    wordCountEl.textContent = `${strWord}: ${words}`;
 }
 
 
@@ -1059,9 +1105,17 @@ function setupSearchController() {
         const replacement = replaceInput.value;
         if (!query) return;
 
-        if (cm.state.sliceDoc(cm.state.selection.main.from, cm.state.selection.main.to) === query) {
-            cm.dispatch(cm.state.replaceSelection(replacement));
-            doSearch(false);
+        const mainSel = cm.state.selection.main;
+        const selectedText = cm.state.sliceDoc(mainSel.from, mainSel.to);
+
+        if (selectedText === query) {
+            cm.dispatch({
+                changes: { from: mainSel.from, to: mainSel.to, insert: replacement },
+                selection: { anchor: mainSel.from, head: mainSel.from + replacement.length },
+                scrollIntoView: true
+            });
+            searchStatus.textContent = i18nDict[appData.uiLang]['status-ready'] || '변경됨';
+            lastQuery = null; // force fresh search next time
         } else {
             doSearch(false);
         }
@@ -1080,7 +1134,19 @@ function setupSearchController() {
 
         if (allMatches.length > 0) {
             let changes = allMatches.map(m => ({ from: m.from, to: m.to, insert: replacement }));
-            cm.dispatch({ changes: changes });
+
+            let diff = replacement.length - query.length;
+            let ranges = allMatches.map((m, i) => {
+                let newFrom = m.from + i * diff;
+                let newTo = newFrom + replacement.length;
+                return EditorSelection.range(newFrom, newTo);
+            });
+
+            cm.dispatch({
+                changes: changes,
+                selection: EditorSelection.create(ranges),
+                scrollIntoView: true
+            });
             searchStatus.textContent = `${allMatches.length}개 변경됨`;
             lastQuery = null;
         } else {
@@ -1088,6 +1154,14 @@ function setupSearchController() {
         }
     });
 
+    // Handle Escape Key anywhere to close modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !searchModal.classList.contains('hidden')) {
+            searchModal.classList.add('hidden');
+            searchStatus.textContent = '';
+            cm.focus(); // Return focus to editor
+        }
+    });
 }
 
 // Initial Setup
