@@ -2,3 +2,8 @@
 !README.md
 !CHANGELOG.md
 !BUILD_GUIDE.md
+
+# Ignore archives
+*.zip
+*.tar
+*.gz
