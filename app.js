@@ -438,6 +438,9 @@ function initCodeMirror() {
                 EditorState.allowMultipleSelections.of(true),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
+                        window.searchLastQuery = null;
+                        window.searchAllMatches = [];
+
                         const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
                         if (activeTab && activeTab.content !== cm.state.doc.toString()) {
                             activeTab.content = cm.state.doc.toString();
@@ -655,7 +658,7 @@ function updateActiveTabContent() {
 
 function updateMarkdownPreview() {
     if (appData.markdownMode) {
-        preview.innerHTML = marked.parse(cm.state.doc.toString() || '');
+        preview.innerHTML = DOMPurify.sanitize(marked.parse(cm.state.doc.toString() || ''));
     }
 }
 
@@ -1044,51 +1047,49 @@ function setupSearchController() {
         cm.focus();
     });
 
-    // Core Search Execution (using CM SearchCursor)
-
     // Core Search Execution (using CM6 SearchCursor)
-    let lastQuery = null;
-    let matchIndex = -1;
-    let allMatches = [];
+    window.searchLastQuery = null;
+    window.searchMatchIndex = -1;
+    window.searchAllMatches = [];
 
     function doSearch(reverse = false) {
         const query = searchInput.value;
         if (!query) return;
 
-        if (query !== lastQuery || allMatches.length === 0) {
-            allMatches = [];
+        if (query !== window.searchLastQuery || window.searchAllMatches.length === 0) {
+            window.searchAllMatches = [];
             let cur = new SearchCursor(cm.state.doc, query);
             while (!cur.next().done) {
-                allMatches.push({ from: cur.value.from, to: cur.value.to });
+                window.searchAllMatches.push({ from: cur.value.from, to: cur.value.to });
             }
-            lastQuery = query;
+            window.searchLastQuery = query;
 
-            if (allMatches.length === 0) {
+            if (window.searchAllMatches.length === 0) {
                 searchStatus.textContent = i18nDict[appData.uiLang]['status-error'] || '결과 없음';
                 return;
             }
         }
 
         let pos = cm.state.selection.main.head;
-        let idx = allMatches.findIndex(m => m.from >= pos);
+        let idx = window.searchAllMatches.findIndex(m => m.from >= pos);
 
         if (reverse) {
-            idx = allMatches.findIndex(m => m.from >= pos) - 1;
-            if (idx < 0) idx = allMatches.length - 1;
+            idx = window.searchAllMatches.findIndex(m => m.from >= pos) - 1;
+            if (idx < 0) idx = window.searchAllMatches.length - 1;
         } else {
             // Find next strict
-            idx = allMatches.findIndex(m => m.from > pos);
+            idx = window.searchAllMatches.findIndex(m => m.from > pos);
             if (idx === -1) idx = 0;
         }
 
-        if (idx !== -1 && idx < allMatches.length) {
-            let found = allMatches[idx];
+        if (idx !== -1 && idx < window.searchAllMatches.length) {
+            let found = window.searchAllMatches[idx];
             cm.dispatch({
                 selection: { anchor: found.from, head: found.to },
                 effects: EditorView.scrollIntoView(found.from, { y: "center" })
             });
-            matchIndex = idx;
-            searchStatus.textContent = `${idx + 1} / ${allMatches.length}`;
+            window.searchMatchIndex = idx;
+            searchStatus.textContent = `${idx + 1} / ${window.searchAllMatches.length}`;
         }
     }
 
@@ -1115,7 +1116,7 @@ function setupSearchController() {
                 scrollIntoView: true
             });
             searchStatus.textContent = i18nDict[appData.uiLang]['status-ready'] || '변경됨';
-            lastQuery = null; // force fresh search next time
+            window.searchLastQuery = null; // force fresh search next time
         } else {
             doSearch(false);
         }
@@ -1126,17 +1127,17 @@ function setupSearchController() {
         const replacement = replaceInput.value;
         if (!query) return;
 
-        allMatches = [];
+        window.searchAllMatches = [];
         let cur = new SearchCursor(cm.state.doc, query);
         while (!cur.next().done) {
-            allMatches.push({ from: cur.value.from, to: cur.value.to });
+            window.searchAllMatches.push({ from: cur.value.from, to: cur.value.to });
         }
 
-        if (allMatches.length > 0) {
-            let changes = allMatches.map(m => ({ from: m.from, to: m.to, insert: replacement }));
+        if (window.searchAllMatches.length > 0) {
+            let changes = window.searchAllMatches.map(m => ({ from: m.from, to: m.to, insert: replacement }));
 
             let diff = replacement.length - query.length;
-            let ranges = allMatches.map((m, i) => {
+            let ranges = window.searchAllMatches.map((m, i) => {
                 let newFrom = m.from + i * diff;
                 let newTo = newFrom + replacement.length;
                 return EditorSelection.range(newFrom, newTo);
@@ -1147,8 +1148,8 @@ function setupSearchController() {
                 selection: EditorSelection.create(ranges),
                 scrollIntoView: true
             });
-            searchStatus.textContent = `${allMatches.length}개 변경됨`;
-            lastQuery = null;
+            searchStatus.textContent = `${window.searchAllMatches.length}개 변경됨`;
+            window.searchLastQuery = null;
         } else {
             searchStatus.textContent = i18nDict[appData.uiLang]['status-error'] || '결과 없음';
         }
