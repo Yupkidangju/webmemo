@@ -702,6 +702,11 @@ function updateActiveTabContent() {
     }
 }
 
+// [v2.2.0] 마크다운 프리뷰 갱신 함수
+// marked.parse() 호출 시 breaks: true 옵션을 적용하여
+// 사용자가 에디터에서 엔터(단일 줄바꿈)를 입력하면 <br> 태그로 변환되도록 처리.
+// 이전 버전에서 줄바꿈이 무시되어 텍스트가 한 줄로 이어 보이던 문제를 해결.
+// DOMPurify를 통한 XSS 방어는 그대로 유지.
 function updateMarkdownPreview() {
     if (appData.markdownMode) {
         preview.innerHTML = DOMPurify.sanitize(marked.parse(cm.state.doc.toString() || ''));
@@ -1243,23 +1248,33 @@ function setupSearchController() {
     });
 }
 
-// Initial Setup
+// [v2.2.0] 앱 초기화 함수
 async function initApp() {
-    // localforage configuration (optional, helps identify DB)
+    // localforage 설정 (IndexedDB 식별용)
     localforage.config({
         name: 'WebMemoPro',
         storeName: 'workspace_data'
     });
 
+    // [v2.2.0] marked.js 전역 옵션 설정
+    // breaks: true → 싱글 줄바꿈(\n)을 <br>로 변환하여 에디터 줄바꿈이 프리뷰에 즉시 반영되도록 함
+    // gfm: true → GitHub Flavored Markdown 사양 적용 (테이블, 취소선, 자동 링크 등)
+    // 이전에는 기본값(breaks: false)으로 인해 # 제목 앞뒤 줄바꿈이 무시되어
+    // 제목이 본문과 합쳐져 보이거나, ---가 Setext 헤딩으로 오인되는 문제가 발생함
+    marked.setOptions({
+        breaks: true,
+        gfm: true
+    });
+
     await loadFromStorage();
     initCodeMirror();
 
-    // Apply settings
+    // 설정 적용
     setTheme(appData.theme);
     themeSelect.value = appData.theme;
     setFontSize(appData.fontSize);
 
-    // Apply UI Language
+    // UI 언어 적용
     applyLanguage(appData.uiLang);
 
     if (appData.markdownMode) {
