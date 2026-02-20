@@ -1,0 +1,1133 @@
+// Global CodeMirror 6 Dependencies
+let EditorState, Compartment, StateEffect;
+let EditorView, keymap, lineNumbers, highlightActiveLineGutter;
+let defaultKeymap, history, historyKeymap, indentWithTab, undo, redo;
+let languages;
+let SearchCursor;
+let syntaxHighlighting, defaultHighlightStyle, bracketMatching;
+let closeBrackets;
+
+let languageConf;
+let readOnlyConf;
+let themeConf;
+let fontConf;
+
+async function loadCM6() {
+    const state = await import("https://esm.sh/@codemirror/state");
+    EditorState = state.EditorState; Compartment = state.Compartment; StateEffect = state.StateEffect;
+
+    const view = await import("https://esm.sh/@codemirror/view");
+    EditorView = view.EditorView; keymap = view.keymap; lineNumbers = view.lineNumbers; highlightActiveLineGutter = view.highlightActiveLineGutter;
+
+    const cmds = await import("https://esm.sh/@codemirror/commands");
+    defaultKeymap = cmds.defaultKeymap; history = cmds.history; historyKeymap = cmds.historyKeymap; indentWithTab = cmds.indentWithTab; undo = cmds.undo; redo = cmds.redo;
+
+    const langData = await import("https://esm.sh/@codemirror/language-data");
+    languages = langData.languages;
+
+    const search = await import("https://esm.sh/@codemirror/search");
+    SearchCursor = search.SearchCursor;
+
+    const lang = await import("https://esm.sh/@codemirror/language");
+    syntaxHighlighting = lang.syntaxHighlighting; defaultHighlightStyle = lang.defaultHighlightStyle; bracketMatching = lang.bracketMatching;
+
+    const ac = await import("https://esm.sh/@codemirror/autocomplete");
+    closeBrackets = ac.closeBrackets;
+
+    languageConf = new Compartment();
+    readOnlyConf = new Compartment();
+    themeConf = new Compartment();
+    fontConf = new Compartment();
+}
+
+// ==========================================
+// WebMemo Pro Logic - App.js (Phase 2)
+// ==========================================
+
+const STORAGE_KEY = 'webmemo_data';
+
+// Default Data Structure
+let appData = {
+    tabs: [
+        { id: 'tab_' + Date.now(), title: '무제 1', content: '', lang: 'text/plain', readonly: false, handle: null }
+    ],
+    activeTabId: null,
+    theme: 'white',
+    markdownMode: false,
+    fontSize: 14,
+    uiLang: 'ko' // Default UI Language
+};
+
+// ==========================================
+// i18n Dictionary (5 Languages)
+// ==========================================
+const i18nDict = {
+    'ko': {
+        'btn-new': '새 파일 (Ctrl+N)',
+        'btn-open': '파일 열기 (Ctrl+O)',
+        'btn-save': '파일 저장 (Ctrl+S)',
+        'btn-save-as': '다른 이름으로 저장 (Ctrl+Shift+S)',
+        'btn-backup': '작업 공간 전체 백업 (.json)',
+        'btn-restore': '작업 공간 복원',
+        'btn-print': 'PDF 인쇄 (Ctrl+P)',
+        'btn-undo': '실행 취소 (Ctrl+Z)',
+        'btn-redo': '다시 실행 (Ctrl+Y)',
+        'btn-search': '검색/찾아 바꾸기 (Ctrl+F)',
+        'btn-cut': '잘라내기 (Ctrl+X)',
+        'btn-copy': '복사 (Ctrl+C)',
+        'btn-paste': '붙여넣기 (Ctrl+V)',
+        'btn-copy-all': '전체 텍스트 복사',
+        'btn-readonly': '읽기 전용 잠금',
+        'btn-zoom-out': '글꼴 축소 (Ctrl+-)',
+        'btn-zoom-in': '글꼴 확대 (Ctrl++)',
+        'btn-zen': '젠 모드 (전체화면) (F11)',
+        'btn-markdown': '마크다운 모드 전환 (Ctrl+M)',
+        'btn-add-tab': '새 탭',
+        'btn-undo-tab': '방금 닫은 탭 복구 (Ctrl+Shift+T)',
+        'ui-lang-select': '인터페이스 언어',
+        'lang-select': '언어 구문 강조',
+        'theme-select': '테마 변경',
+        'status-ready': '준비됨',
+        'status-saving': '저장중...',
+        'status-saved': '저장됨',
+        'status-error': '오류 발생',
+        'search-title': '찾기 / 바꾸기',
+        'search-placeholder': '검색어 입력...',
+        'replace-placeholder': '바꿀 내용...',
+        'btn-replace': '바꾸기',
+        'btn-replace-all': '모두 바꾸기'
+    },
+    'en': {
+        'btn-new': 'New File (Ctrl+N)',
+        'btn-open': 'Open File (Ctrl+O)',
+        'btn-save': 'Save (Ctrl+S)',
+        'btn-save-as': 'Save As (Ctrl+Shift+S)',
+        'btn-backup': 'Backup Workspace (.json)',
+        'btn-restore': 'Restore Workspace',
+        'btn-print': 'Print to PDF (Ctrl+P)',
+        'btn-undo': 'Undo (Ctrl+Z)',
+        'btn-redo': 'Redo (Ctrl+Y)',
+        'btn-search': 'Find / Replace (Ctrl+F)',
+        'btn-cut': 'Cut (Ctrl+X)',
+        'btn-copy': 'Copy (Ctrl+C)',
+        'btn-paste': 'Paste (Ctrl+V)',
+        'btn-copy-all': 'Copy All Text',
+        'btn-readonly': 'Toggle Read-Only',
+        'btn-zoom-out': 'Zoom Out (Ctrl+-)',
+        'btn-zoom-in': 'Zoom In (Ctrl++)',
+        'btn-zen': 'Zen Mode (Fullscreen) (F11)',
+        'btn-markdown': 'Toggle Markdown (Ctrl+M)',
+        'btn-add-tab': 'New Tab',
+        'btn-undo-tab': 'Restore Closed Tab (Ctrl+Shift+T)',
+        'ui-lang-select': 'UI Language',
+        'lang-select': 'Syntax Highlighting',
+        'theme-select': 'Change Theme',
+        'status-ready': 'Ready',
+        'status-saving': 'Saving...',
+        'status-saved': 'Saved',
+        'status-error': 'Error Occurred',
+        'search-title': 'Find & Replace',
+        'search-placeholder': 'Find...',
+        'replace-placeholder': 'Replace with...',
+        'btn-replace': 'Replace',
+        'btn-replace-all': 'Replace All'
+    },
+    'ja': {
+        'btn-new': '新規ファイル (Ctrl+N)',
+        'btn-open': 'ファイルを開く (Ctrl+O)',
+        'btn-save': '保存 (Ctrl+S)',
+        'btn-save-as': '名前を付けて保存 (Ctrl+Shift+S)',
+        'btn-backup': 'ワークスペースのバックアップ',
+        'btn-restore': 'ワークスペースの復元',
+        'btn-print': 'PDF 印刷 (Ctrl+P)',
+        'btn-undo': '元に戻す (Ctrl+Z)',
+        'btn-redo': 'やり直し (Ctrl+Y)',
+        'btn-search': '検索 / 置換 (Ctrl+F)',
+        'btn-cut': '切り取り (Ctrl+X)',
+        'btn-copy': 'コピー (Ctrl+C)',
+        'btn-paste': '貼り付け (Ctrl+V)',
+        'btn-copy-all': 'すべてコピー',
+        'btn-readonly': '読み取り専用',
+        'btn-zoom-out': '縮小 (Ctrl+-)',
+        'btn-zoom-in': '拡大 (Ctrl++)',
+        'btn-zen': '禅モード (全画面) (F11)',
+        'btn-markdown': 'Markdown 切り替え (Ctrl+M)',
+        'btn-add-tab': '新しいタブ',
+        'btn-undo-tab': '閉じたタブを復元 (Ctrl+Shift+T)',
+        'ui-lang-select': 'UI 言語',
+        'lang-select': '構文のハイライト',
+        'theme-select': 'テーマの変更',
+        'status-ready': '準備完了',
+        'status-saving': '保存中...',
+        'status-saved': '保存しました',
+        'status-error': 'エラー発生',
+        'search-title': '検索と置換',
+        'search-placeholder': '検索...',
+        'replace-placeholder': '置換...',
+        'btn-replace': '置換',
+        'btn-replace-all': 'すべて置換'
+    },
+    'zh-TW': {
+        'btn-new': '新檔案 (Ctrl+N)',
+        'btn-open': '開啟檔案 (Ctrl+O)',
+        'btn-save': '儲存 (Ctrl+S)',
+        'btn-save-as': '另存新檔 (Ctrl+Shift+S)',
+        'btn-backup': '備份工作區 (.json)',
+        'btn-restore': '還原工作區',
+        'btn-print': '列印 PDF (Ctrl+P)',
+        'btn-undo': '復原 (Ctrl+Z)',
+        'btn-redo': '重做 (Ctrl+Y)',
+        'btn-search': '尋找與取代 (Ctrl+F)',
+        'btn-cut': '剪下 (Ctrl+X)',
+        'btn-copy': '複製 (Ctrl+C)',
+        'btn-paste': '貼上 (Ctrl+V)',
+        'btn-copy-all': '複製全部',
+        'btn-readonly': '唯讀模式',
+        'btn-zoom-out': '縮小 (Ctrl+-)',
+        'btn-zoom-in': '放大 (Ctrl++)',
+        'btn-zen': '全螢幕模式 (F11)',
+        'btn-markdown': '切換 Markdown (Ctrl+M)',
+        'btn-add-tab': '新增分頁',
+        'btn-undo-tab': '還原關閉的分頁 (Ctrl+Shift+T)',
+        'ui-lang-select': '介面語言',
+        'lang-select': '語法高亮',
+        'theme-select': '變更主題',
+        'status-ready': '準備就緒',
+        'status-saving': '儲存中...',
+        'status-saved': '已儲存',
+        'status-error': '發生錯誤',
+        'search-title': '尋找與取代',
+        'search-placeholder': '尋找...',
+        'replace-placeholder': '取代為...',
+        'btn-replace': '取代',
+        'btn-replace-all': '全部取代'
+    },
+    'zh-CN': {
+        'btn-new': '新文件 (Ctrl+N)',
+        'btn-open': '打开文件 (Ctrl+O)',
+        'btn-save': '保存 (Ctrl+S)',
+        'btn-save-as': '另存为 (Ctrl+Shift+S)',
+        'btn-backup': '备份工作区 (.json)',
+        'btn-restore': '恢复工作区',
+        'btn-print': '打印 PDF (Ctrl+P)',
+        'btn-undo': '撤销 (Ctrl+Z)',
+        'btn-redo': '重做 (Ctrl+Y)',
+        'btn-search': '查找与替换 (Ctrl+F)',
+        'btn-cut': '剪切 (Ctrl+X)',
+        'btn-copy': '复制 (Ctrl+C)',
+        'btn-paste': '粘贴 (Ctrl+V)',
+        'btn-copy-all': '复制全部',
+        'btn-readonly': '只读模式',
+        'btn-zoom-out': '缩小 (Ctrl+-)',
+        'btn-zoom-in': '放大 (Ctrl++)',
+        'btn-zen': '全屏模式 (F11)',
+        'btn-markdown': '切换 Markdown (Ctrl+M)',
+        'btn-add-tab': '新标签页',
+        'btn-undo-tab': '恢复关闭的标签页 (Ctrl+Shift+T)',
+        'ui-lang-select': '界面语言',
+        'lang-select': '语法高亮',
+        'theme-select': '更改主题',
+        'status-ready': '准备就绪',
+        'status-saving': '保存中...',
+        'status-saved': '已保存',
+        'status-error': '发生错误',
+        'search-title': '查找与替换',
+        'search-placeholder': '查找...',
+        'replace-placeholder': '替换为...',
+        'btn-replace': '替换',
+        'btn-replace-all': '全部替换'
+    }
+};
+
+let closedTabs = []; // For Undo Tab Close
+let cm; // CodeMirror instance
+
+if (!appData.activeTabId && appData.tabs.length > 0) {
+    appData.activeTabId = appData.tabs[0].id;
+}
+
+// DOM Elements
+const editorTextarea = document.getElementById('editor');
+const preview = document.getElementById('preview');
+const tabContainer = document.getElementById('tab-container');
+const btnAddTab = document.getElementById('btn-add-tab');
+const btnUndoTab = document.getElementById('btn-undo-tab');
+const cursorPosEl = document.getElementById('cursor-pos');
+const wordCountEl = document.getElementById('word-count');
+const charCountEl = document.getElementById('char-count');
+const statusMsgEl = document.getElementById('status-msg');
+const themeSelect = document.getElementById('theme-select');
+const langSelect = document.getElementById('lang-select');
+const btnMarkdown = document.getElementById('btn-markdown');
+const btnReadonly = document.getElementById('btn-readonly');
+const fileInput = document.getElementById('file-input');
+const restoreInput = document.getElementById('restore-input');
+
+// Save to IndexedDB via localForage
+async function saveToStorage() {
+    const dataToSave = { ...appData };
+    // Keep handles intact for serialization into IndexedDB
+    try {
+        await localforage.setItem(STORAGE_KEY, dataToSave);
+        const savedMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-saved'] : '저장됨';
+        showStatus(savedMsg);
+    } catch (err) {
+        console.error('Save to IndexedDB failed', err);
+        const errMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-error'] : '저장 오류 (용량 초과)';
+        showStatus(errMsg);
+    }
+}
+
+// Load from IndexedDB
+async function loadFromStorage() {
+    try {
+        const data = await localforage.getItem(STORAGE_KEY);
+        if (data) {
+            // Support backwards compatibility for older JSON strings
+            const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+            appData = { ...appData, ...parsed };
+        }
+    } catch (e) {
+        console.error('Failed to parse local storage data', e);
+    }
+}
+
+function applyLanguage(langCode) {
+    if (!i18nDict[langCode]) langCode = 'ko'; // fallback
+    const dict = i18nDict[langCode];
+
+    // Toolbars & Buttons
+    for (const [id, text] of Object.entries(dict)) {
+        const el = document.getElementById(id);
+        if (el) {
+            if (el.hasAttribute('title')) el.setAttribute('title', text);
+            if (el.tagName === 'SPAN' && el.id === 'search-title') el.textContent = text;
+            if (el.tagName === 'BUTTON' && el.id === 'btn-replace') el.textContent = text;
+            if (el.tagName === 'BUTTON' && el.id === 'btn-replace-all') el.textContent = text;
+            if (el.tagName === 'SPAN' && el.id === 'search-status') el.textContent = '';
+        }
+    }
+
+    // Placeholders
+    const searchInput = document.getElementById('search-input');
+    const replaceInput = document.getElementById('replace-input');
+    if (searchInput) searchInput.setAttribute('placeholder', dict['search-placeholder']);
+    if (replaceInput) replaceInput.setAttribute('placeholder', dict['replace-placeholder']);
+
+    // Status Default
+    const statusMsg = document.getElementById('status-msg');
+    if (statusMsg && statusMsg.textContent === i18nDict[appData.uiLang]['status-ready']) {
+        statusMsg.textContent = dict['status-ready'];
+    }
+
+    // Label override
+    const mdLabel = document.getElementById('label-markdown');
+    if (mdLabel) mdLabel.textContent = "Markdown";
+
+    // Update active dropdown
+    const uiLangSelect = document.getElementById('ui-lang-select');
+    if (uiLangSelect) uiLangSelect.value = langCode;
+
+    appData.uiLang = langCode;
+}
+
+// Language Map for Auto Detection
+async function autoDetectSyntax(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+
+    // Find language in CM6 languages data
+    const langDesc = languages.find(l => l.extensions.includes(ext) || l.name.toLowerCase() === ext);
+    let mime = 'text/plain';
+
+    if (langDesc) {
+        try {
+            const langSupport = await langDesc.load();
+            cm.dispatch({ effects: languageConf.reconfigure(langSupport) });
+            mime = langDesc.name;
+        } catch (e) { console.error('Failed to load language', e); }
+    } else {
+        cm.dispatch({ effects: languageConf.reconfigure([]) });
+    }
+
+    const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+    if (activeTab) {
+        activeTab.lang = mime;
+
+        // Ensure option exists in dropdown, else create it
+        let optionExists = Array.from(langSelect.options).some(opt => opt.value === mime);
+        if (!optionExists) {
+            const newOption = document.createElement('option');
+            newOption.value = mime;
+            newOption.textContent = mime;
+            langSelect.appendChild(newOption);
+        }
+        langSelect.value = mime;
+
+        if (ext === 'md' || ext === 'markdown') {
+            appData.markdownMode = true;
+            btnMarkdown.classList.add('active');
+            preview.classList.remove('hidden');
+        } else {
+            appData.markdownMode = false;
+            btnMarkdown.classList.remove('active');
+            preview.classList.add('hidden');
+        }
+        updateMarkdownPreview();
+        saveToStorage();
+    }
+}
+
+// Initialize CodeMirror
+function initCodeMirror() {
+    cm = new EditorView({
+        state: EditorState.create({
+            doc: "",
+            extensions: [
+                lineNumbers(),
+                highlightActiveLineGutter(),
+                history(),
+                bracketMatching(),
+                closeBrackets(),
+                keymap.of([indentWithTab, ...historyKeymap, ...defaultKeymap]),
+                syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+                languageConf.of([]),
+                readOnlyConf.of(EditorState.readOnly.of(false)),
+                themeConf.of([]),
+                fontConf.of([]),
+                EditorView.updateListener.of((update) => {
+                    if (update.docChanged) {
+                        const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+                        if (activeTab && activeTab.content !== cm.state.doc.toString()) {
+                            activeTab.content = cm.state.doc.toString();
+                            updateMarkdownPreview();
+                            updateStats();
+                            const ui = document.querySelector(`.tab[data-id="${activeTab.id}"] .tab-title`);
+                            if (ui) ui.classList.add('modified');
+                            showStatus(i18nDict[appData.uiLang]['status-saving'] || '작성중...');
+                            clearTimeout(window.saveTimer);
+                            window.saveTimer = setTimeout(() => { saveToStorage(); }, 2000);
+                        }
+                    }
+                    if (update.selectionSet || update.docChanged) {
+                        const head = update.state.selection.main.head;
+                        const line = update.state.doc.lineAt(head);
+                        cursorPosEl.textContent = `줄: ${line.number} | 열: ${head - line.from + 1}`;
+                    }
+                }),
+                EditorView.domEventHandlers({
+                    scroll: (e, view) => {
+                        if (!appData.markdownMode) return;
+                        const scrollInfo = view.scrollDOM;
+                        const scrollPercentage = scrollInfo.scrollTop / (scrollInfo.scrollHeight - scrollInfo.clientHeight);
+                        if (!isNaN(scrollPercentage)) {
+                            preview.scrollTop = scrollPercentage * (preview.scrollHeight - preview.clientHeight);
+                        }
+                    }
+                })
+            ]
+        }),
+        parent: document.querySelector('.editor-wrapper')
+    });
+    // Use code editor from CM6
+    editorTextarea.style.display = 'none';
+}
+function updateStats() {
+    const text = cm.state.doc.toString();
+    const chars = text.length;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    charCountEl.textContent = `글자: ${chars}`;
+    wordCountEl.textContent = `단어: ${words}`;
+}
+
+
+
+function setFontSize(size) {
+    if (size < 10) size = 10;
+    if (size > 40) size = 40;
+    appData.fontSize = size;
+    document.querySelector('.cm-editor').style.fontSize = `${size}px`;
+    preview.style.fontSize = `${size}px`;
+    // cm.refresh() not needed in CM6;
+    saveToStorage();
+    showStatus(`글꼴 크기: ${size}px`);
+}
+
+function setTheme(themeName) {
+    appData.theme = themeName;
+    document.body.setAttribute('data-theme', themeName);
+    saveToStorage();
+}
+
+// Tab Management
+function renderTabs() {
+    tabContainer.innerHTML = '';
+
+    appData.tabs.forEach((tab, index) => {
+        const tabEl = document.createElement('div');
+        tabEl.className = 'tab' + (tab.id === appData.activeTabId ? ' active' : '');
+        tabEl.dataset.id = tab.id;
+
+        let displayTitle = tab.title || '무제 ' + (index + 1);
+
+        tabEl.innerHTML = `
+            <span class="tab-title ${tab.readonly ? 'readonly' : ''}" title="${displayTitle}">${displayTitle}</span>
+            <button class="tab-close" data-id="${tab.id}"><i class="ph ph-x"></i></button>
+        `;
+
+        tabEl.addEventListener('click', (e) => {
+            if (e.target.closest('.tab-close')) return;
+            switchTab(tab.id);
+        });
+
+        // Double click to rename tab & trigger syntax highlight
+        tabEl.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            const currentName = tab.title || displayTitle;
+            const newName = prompt('탭 이름 변경 (확장자 포함 시 구문 색상이 자동 감지됩니다):', currentName);
+            if (newName && newName.trim() !== '') {
+                tab.title = newName.trim();
+                renderTabs();
+
+                // If it's the active tab, immediately apply new syntax
+                if (tab.id === appData.activeTabId) {
+                    autoDetectSyntax(tab.title);
+                }
+                saveToStorage();
+                showStatus(`탭 이름 변경됨: ${tab.title}`);
+            }
+        });
+
+        tabEl.querySelector('.tab-close').addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeTab(tab.id);
+        });
+
+        tabContainer.appendChild(tabEl);
+    });
+
+    // Undo btn visibilty mostly logic
+}
+
+function switchTab(id) {
+    appData.activeTabId = id;
+    renderTabs();
+    loadActiveTabContent();
+    saveToStorage();
+}
+
+function closeTab(id) {
+    const tabToClose = appData.tabs.find(t => t.id === id);
+    if (!tabToClose) return;
+
+    closedTabs.push({ ...tabToClose }); // Save to short-term history array
+    if (closedTabs.length > 20) closedTabs.shift(); // Max 20 history
+
+    if (appData.tabs.length === 1) {
+        appData.tabs = [{ id: 'tab_' + Date.now(), title: '무제 1', content: '', lang: 'text/plain', readonly: false, handle: null }];
+        appData.activeTabId = appData.tabs[0].id;
+    } else {
+        const index = appData.tabs.findIndex(t => t.id === id);
+        appData.tabs = appData.tabs.filter(t => t.id !== id);
+        if (appData.activeTabId === id) {
+            appData.activeTabId = appData.tabs[Math.max(0, index - 1)].id;
+        }
+    }
+    renderTabs();
+    loadActiveTabContent();
+    saveToStorage();
+    showStatus('탭 닫힘');
+}
+
+function addTab(title = '새 문서', content = '', lang = 'text/plain', handle = null) {
+    const newTab = {
+        id: 'tab_' + Date.now(),
+        title: title,
+        content: content,
+        lang: lang,
+        readonly: false,
+        handle: handle
+    };
+    appData.tabs.push(newTab);
+    appData.activeTabId = newTab.id;
+    renderTabs();
+    loadActiveTabContent();
+    saveToStorage();
+    if (handle) autoDetectSyntax(title);
+    cm.focus();
+}
+
+function undoCloseTab() {
+    if (closedTabs.length > 0) {
+        const tabToRestore = closedTabs.pop();
+        appData.tabs.push(tabToRestore);
+        appData.activeTabId = tabToRestore.id;
+        renderTabs();
+        loadActiveTabContent();
+        saveToStorage();
+        showStatus('닫은 탭 복구됨');
+    } else {
+        showStatus('복구할 탭이 없습니다.');
+    }
+}
+
+// Editor Functions
+function loadActiveTabContent() {
+    const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+    if (activeTab) {
+        cm.dispatch({ changes: { from: 0, to: cm.state.doc.length, insert: activeTab.content || '' } });
+
+        const lName = activeTab.lang || 'text/plain';
+        const lgDesc = languages.find(l => l.name === lName || l.name.toLowerCase() === lName.toLowerCase() || (l.alias && l.alias.includes(lName.toLowerCase())));
+        if (lgDesc) {
+            lgDesc.load().then(ls => cm.dispatch({ effects: languageConf.reconfigure(ls) }));
+        } else {
+            cm.dispatch({ effects: languageConf.reconfigure([]) });
+        }
+        cm.dispatch({ effects: readOnlyConf.reconfigure(EditorState.readOnly.of(!!activeTab.readonly)) });
+        langSelect.value = activeTab.lang || 'text/plain';
+        if (activeTab.readonly) btnReadonly.classList.add('active');
+        else btnReadonly.classList.remove('active');
+    }
+    updateMarkdownPreview();
+    updateStats();
+
+    // Clear modification indicator
+    const currentTabUI = document.querySelector(`.tab[data-id="${appData.activeTabId}"] .tab-title`);
+    if (currentTabUI) currentTabUI.classList.remove('modified');
+    // setTimeout(() => // cm.refresh() not needed in CM6, 10);
+}
+
+function updateActiveTabContent() {
+    const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+    if (activeTab) {
+        activeTab.content = cm.state.doc.toString();
+        saveToStorage();
+        updateMarkdownPreview();
+        renderTabs(); // updates titles
+    }
+}
+
+function updateMarkdownPreview() {
+    if (appData.markdownMode) {
+        preview.innerHTML = marked.parse(cm.state.doc.toString() || '');
+    }
+}
+
+let statusTimeout;
+function showStatus(msg) {
+    statusMsgEl.textContent = msg;
+    clearTimeout(statusTimeout);
+    statusTimeout = setTimeout(() => {
+        statusMsgEl.textContent = '준비됨';
+    }, 2000);
+}
+
+// Native File System API Operations
+const fileOptions = {
+    types: [
+        {
+            description: 'Text Files',
+            accept: {
+                'text/plain': ['.txt', '.md', '.json', '.js', '.html', '.css', '.py', '.c', '.cpp', '.rs', '.cs', '.java', '.sql']
+            },
+        },
+    ],
+};
+
+async function handleOpenFile() {
+    try {
+        if (window.showOpenFilePicker) {
+            const [handle] = await window.showOpenFilePicker(fileOptions);
+            const file = await handle.getFile();
+            const content = await file.text();
+            addTab(file.name, content, 'text/plain', handle);
+            showStatus('파일 열기 성공');
+        } else {
+            // Fallback for HTTP / Unsupported browsers
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt,.md,.json,.js,.html,.css,.py,.c,.cpp,.rs,.cs,.java,.sql';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    addTab(file.name, ev.target.result, 'text/plain', null);
+                    showStatus('파일 열기 성공 (HTTP 호환 모드)');
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            console.error('File open error:', err);
+            showStatus('파일 열기 실패');
+        }
+    }
+}
+
+async function handleSaveFile(saveAs = false) {
+    const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+    if (!activeTab) return;
+
+    try {
+        let suggestedName = activeTab.title;
+        if (suggestedName.includes('무제') || suggestedName.includes('새 문서')) {
+            const newName = prompt('파일 이름을 지정해주세요 (미리 구문 색상이 적용됩니다):', "untitled.txt");
+            if (newName && newName.trim() !== '') {
+                suggestedName = newName.trim();
+                activeTab.title = suggestedName;
+                renderTabs();
+                autoDetectSyntax(suggestedName);
+            } else {
+                return; // Cancelled
+            }
+        }
+
+        if (window.showSaveFilePicker) {
+            let handle = activeTab.handle;
+
+            // Verify permission if handle exists from DB
+            if (handle && !saveAs) {
+                const opts = { mode: 'readwrite' };
+                if ((await handle.queryPermission(opts)) !== 'granted') {
+                    if ((await handle.requestPermission(opts)) !== 'granted') {
+                        throw new Error('Permission denied by user');
+                    }
+                }
+            }
+
+            if (!handle || saveAs) {
+                let suggestedName = activeTab.title;
+                if (suggestedName.includes('무제') || suggestedName.includes('새 문서')) {
+                    suggestedName = "untitled.txt";
+                }
+                handle = await window.showSaveFilePicker({
+                    ...fileOptions,
+                    suggestedName: suggestedName
+                });
+                activeTab.handle = handle;
+                activeTab.title = handle.name;
+            }
+
+            const writable = await handle.createWritable();
+            await writable.write(activeTab.content);
+            await writable.close();
+
+            // Remove modification star and auto-detect syntax based on new name
+            const currentTabUI = document.querySelector(`.tab[data-id="${appData.activeTabId}"] .tab-title`);
+            if (currentTabUI) currentTabUI.classList.remove('modified');
+            autoDetectSyntax(handle.name);
+
+            renderTabs(); // Refresh titles
+            saveToStorage();
+            showStatus('네이티브 저장 성공');
+        } else {
+            // Fallback: Download via blob
+            let suggestedName = activeTab.title;
+            if (suggestedName.includes('무제') || suggestedName.includes('새 문서')) {
+                suggestedName = "untitled.txt";
+            }
+
+            // Re-use downloadFile logic
+            const blob = new Blob([activeTab.content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = suggestedName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+
+            const currentTabUI = document.querySelector(`.tab[data-id="${appData.activeTabId}"] .tab-title`);
+            if (currentTabUI) currentTabUI.classList.remove('modified');
+
+            showStatus('다운로드 저장 성공 (HTTP 호환 모드)');
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            console.error('File save error:', err);
+            showStatus('저장에 실패했습니다 (권한 필요)');
+        }
+    }
+}
+
+// Workspace JSON Downloader (Fallback)
+function downloadFile(content, extension, mimeType, suggestedTitle) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${suggestedTitle}.${extension}`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+function backupWorkspace() {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const dataToBackup = { ...appData };
+    dataToBackup.tabs = dataToBackup.tabs.map(t => ({ ...t, handle: null })); // remove non-json handles
+    downloadFile(JSON.stringify(dataToBackup, null, 2), 'json', 'application/json', `webmemo_ws_${dateStr}`);
+    showStatus('워크스페이스 백업 완료');
+}
+
+// Setup Event Listeners
+function setupEventListeners() {
+    btnAddTab.addEventListener('click', () => addTab());
+    btnUndoTab.addEventListener('click', undoCloseTab);
+
+    // Zoom
+    document.getElementById('btn-zoom-in').addEventListener('click', () => setFontSize(appData.fontSize + 2));
+    document.getElementById('btn-zoom-out').addEventListener('click', () => setFontSize(appData.fontSize - 2));
+
+    // Zen Mode
+    document.getElementById('btn-zen').addEventListener('click', () => {
+        document.body.classList.toggle('zen-mode');
+        // cm.refresh() not needed in CM6;
+        showStatus('젠 모드 토글 (F11)');
+    });
+
+    // Theme Selector
+    themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
+
+    // Language Selector
+    langSelect.addEventListener('change', (e) => {
+        const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+        if (activeTab) {
+            activeTab.lang = e.target.value;
+            const langDesc = languages.find(l => l.name === activeTab.lang || l.name.toLowerCase() === activeTab.lang.toLowerCase() || (l.alias && l.alias.includes(activeTab.lang.toLowerCase())));
+            if (langDesc) {
+                langDesc.load().then(ls => cm.dispatch({ effects: languageConf.reconfigure(ls) }));
+            } else {
+                cm.dispatch({ effects: languageConf.reconfigure([]) });
+            }
+
+            // Toggle Markdown Mode
+            if (activeTab.lang === 'Markdown') {
+                appData.markdownMode = true;
+                btnMarkdown.classList.add('active');
+                preview.classList.remove('hidden');
+                updateMarkdownPreview();
+            } else {
+                appData.markdownMode = false;
+                btnMarkdown.classList.remove('active');
+                preview.classList.add('hidden');
+            }
+
+            saveToStorage();
+            showStatus(`언어: ${e.target.options[e.target.selectedIndex].text}`);
+        }
+    });
+
+    // UI Language Selector (i18n)
+    const uiLangSelect = document.getElementById('ui-lang-select');
+    if (uiLangSelect) {
+        uiLangSelect.addEventListener('change', (e) => {
+            applyLanguage(e.target.value);
+            saveToStorage();
+            showStatus(i18nDict[appData.uiLang]['status-ready'] || '준비됨');
+        });
+    }
+
+    // Markdown Toggle
+    btnMarkdown.addEventListener('click', () => {
+        appData.markdownMode = !appData.markdownMode;
+        if (appData.markdownMode) {
+            btnMarkdown.classList.add('active');
+            preview.classList.remove('hidden');
+        } else {
+            btnMarkdown.classList.remove('active');
+            preview.classList.add('hidden');
+        }
+        updateMarkdownPreview();
+        saveToStorage();
+        // cm.refresh() not needed in CM6;
+    });
+
+    // Toolbar Basic Action
+    document.getElementById('btn-new').addEventListener('click', () => addTab());
+    document.getElementById('btn-save').addEventListener('click', () => handleSaveFile(false));
+    document.getElementById('btn-save-as').addEventListener('click', () => handleSaveFile(true));
+    document.getElementById('btn-open').addEventListener('click', handleOpenFile);
+
+    // Backup & Restore
+    document.getElementById('btn-backup').addEventListener('click', backupWorkspace);
+    document.getElementById('btn-restore').addEventListener('click', () => restoreInput.click());
+    restoreInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const parsed = JSON.parse(event.target.result);
+                if (parsed.tabs) {
+                    appData = parsed;
+                    await saveToStorage();
+
+                    // Full refresh layout
+                    cm.destroy();
+                    editorTextarea.value = '';
+                    closedTabs = [];
+                    initApp();
+
+                    showStatus('워크스페이스 복원됨');
+                }
+            } catch (err) {
+                alert('유효하지 않은 백업 파일입니다.');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    });
+
+    // Print
+    document.getElementById('btn-print').addEventListener('click', () => window.print());
+
+    // Editor Commands (Cut, Copy, Paste, Undo, Redo, Search)
+    document.getElementById('btn-undo').addEventListener('click', () => undo(cm));
+    document.getElementById('btn-redo').addEventListener('click', () => redo(cm));
+
+    document.getElementById('btn-search').addEventListener('click', () => {
+        const searchModal = document.getElementById('search-modal');
+        const searchInput = document.getElementById('search-input');
+        searchModal.classList.remove('hidden');
+        searchInput.focus();
+        searchInput.select();
+    });
+
+    document.getElementById('btn-cut').addEventListener('click', () => {
+        const selection = cm.state.sliceDoc(cm.state.selection.main.from, cm.state.selection.main.to);
+        if (selection) {
+            navigator.clipboard.writeText(selection).then(() => {
+                cm.dispatch(cm.state.replaceSelection(''));
+                showStatus(i18nDict[appData.uiLang]['status-ready'] || '잘라내기 완료');
+            }).catch(e => showStatus('권한 거부됨'));
+        }
+    });
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        const selection = cm.state.sliceDoc(cm.state.selection.main.from, cm.state.selection.main.to);
+        if (selection) {
+            navigator.clipboard.writeText(selection).then(() => showStatus(i18nDict[appData.uiLang]['status-ready'] || '복사 완료'))
+                .catch(e => showStatus('권한 거부됨'));
+        }
+    });
+
+    document.getElementById('btn-paste').addEventListener('click', () => {
+        navigator.clipboard.readText().then(text => {
+            if (text) {
+                cm.dispatch(cm.state.replaceSelection(text));
+                showStatus(i18nDict[appData.uiLang]['status-ready'] || '붙여넣기 완료');
+            }
+        }).catch(e => showStatus('권한 거부됨'));
+    });
+
+    document.getElementById('btn-copy-all').addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(cm.state.doc.toString());
+            showStatus('전체 클립보드 복사됨');
+        } catch (e) {
+            showStatus('클립보드 권한 거부됨');
+        }
+    });
+
+    // Readonly Lock
+    btnReadonly.addEventListener('click', () => {
+        const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+        if (activeTab) {
+            activeTab.readonly = !activeTab.readonly;
+            cm.dispatch({ effects: readOnlyConf.reconfigure(EditorState.readOnly.of(!!activeTab.readonly)) });
+            if (activeTab.readonly) btnReadonly.classList.add('active');
+            else btnReadonly.classList.remove('active');
+            renderTabs();
+            saveToStorage();
+            showStatus(activeTab.readonly ? '읽기 전용 모드' : '편집 가능');
+        }
+    });
+
+    // Keyboard Shortcuts Override
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't') {
+            e.preventDefault();
+            undoCloseTab();
+        } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            handleSaveFile(true);
+        } else if (e.key === 'F11') {
+            e.preventDefault();
+            document.getElementById('btn-zen').click();
+        } else if (e.ctrlKey) {
+            switch (e.key.toLowerCase()) {
+                case 's': e.preventDefault(); handleSaveFile(false); break;
+                case 'n': e.preventDefault(); addTab(); break;
+                case 'o': e.preventDefault(); handleOpenFile(); break;
+                case 'm': e.preventDefault(); btnMarkdown.click(); break;
+                case 'p': e.preventDefault(); window.print(); break;
+            }
+        }
+    });
+
+    // Window Resize fixes CM layout
+    window.addEventListener('resize', () => { /* cm.refresh() not needed in CM6 */ });
+}
+
+// ==========================================
+// Custom Floating Search Controller
+// ==========================================
+function setupSearchController() {
+    const searchModal = document.getElementById('search-modal');
+    const searchInput = document.getElementById('search-input');
+    const replaceInput = document.getElementById('replace-input');
+    const searchStatus = document.getElementById('search-status');
+
+    // Override default Ctrl+F
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+            e.preventDefault();
+            searchModal.classList.remove('hidden');
+            searchInput.focus();
+            searchInput.select();
+        }
+    });
+
+    // Close Button
+    document.getElementById('btn-search-close').addEventListener('click', () => {
+        searchModal.classList.add('hidden');
+        cm.focus();
+    });
+
+    // Core Search Execution (using CM SearchCursor)
+
+    // Core Search Execution (using CM6 SearchCursor)
+    let lastQuery = null;
+    let matchIndex = -1;
+    let allMatches = [];
+
+    function doSearch(reverse = false) {
+        const query = searchInput.value;
+        if (!query) return;
+
+        if (query !== lastQuery || allMatches.length === 0) {
+            allMatches = [];
+            let cur = new SearchCursor(cm.state.doc, query);
+            while (!cur.next().done) {
+                allMatches.push({ from: cur.value.from, to: cur.value.to });
+            }
+            lastQuery = query;
+
+            if (allMatches.length === 0) {
+                searchStatus.textContent = i18nDict[appData.uiLang]['status-error'] || '결과 없음';
+                return;
+            }
+        }
+
+        let pos = cm.state.selection.main.head;
+        let idx = allMatches.findIndex(m => m.from >= pos);
+
+        if (reverse) {
+            idx = allMatches.findIndex(m => m.from >= pos) - 1;
+            if (idx < 0) idx = allMatches.length - 1;
+        } else {
+            // Find next strict
+            idx = allMatches.findIndex(m => m.from > pos);
+            if (idx === -1) idx = 0;
+        }
+
+        if (idx !== -1 && idx < allMatches.length) {
+            let found = allMatches[idx];
+            cm.dispatch({
+                selection: { anchor: found.from, head: found.to },
+                effects: EditorView.scrollIntoView(found.from, { y: "center" })
+            });
+            matchIndex = idx;
+            searchStatus.textContent = `${idx + 1} / ${allMatches.length}`;
+        }
+    }
+
+    document.getElementById('btn-search-next').addEventListener('click', () => doSearch(false));
+    document.getElementById('btn-search-prev').addEventListener('click', () => doSearch(true));
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doSearch(e.shiftKey);
+        if (e.key === 'Escape') document.getElementById('btn-search-close').click();
+    });
+
+    // Replace Logic
+    document.getElementById('btn-replace').addEventListener('click', () => {
+        const query = searchInput.value;
+        const replacement = replaceInput.value;
+        if (!query) return;
+
+        if (cm.state.sliceDoc(cm.state.selection.main.from, cm.state.selection.main.to) === query) {
+            cm.dispatch(cm.state.replaceSelection(replacement));
+            doSearch(false);
+        } else {
+            doSearch(false);
+        }
+    });
+
+    document.getElementById('btn-replace-all').addEventListener('click', () => {
+        const query = searchInput.value;
+        const replacement = replaceInput.value;
+        if (!query) return;
+
+        allMatches = [];
+        let cur = new SearchCursor(cm.state.doc, query);
+        while (!cur.next().done) {
+            allMatches.push({ from: cur.value.from, to: cur.value.to });
+        }
+
+        if (allMatches.length > 0) {
+            let changes = allMatches.map(m => ({ from: m.from, to: m.to, insert: replacement }));
+            cm.dispatch({ changes: changes });
+            searchStatus.textContent = `${allMatches.length}개 변경됨`;
+            lastQuery = null;
+        } else {
+            searchStatus.textContent = i18nDict[appData.uiLang]['status-error'] || '결과 없음';
+        }
+    });
+
+}
+
+// Initial Setup
+async function initApp() {
+    // localforage configuration (optional, helps identify DB)
+    localforage.config({
+        name: 'WebMemoPro',
+        storeName: 'workspace_data'
+    });
+
+    await loadFromStorage();
+    initCodeMirror();
+
+    // Apply settings
+    setTheme(appData.theme);
+    themeSelect.value = appData.theme;
+    setFontSize(appData.fontSize);
+
+    // Apply UI Language
+    applyLanguage(appData.uiLang);
+
+    if (appData.markdownMode) {
+        btnMarkdown.classList.add('active');
+        preview.classList.remove('hidden');
+    }
+
+    renderTabs();
+    loadActiveTabContent();
+}
+
+// Start Application Lifecycle
+async function bootstrap() {
+    await loadCM6();
+    await initApp();
+    setupEventListeners();
+    setupSearchController();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap);
+} else {
+    bootstrap();
+}

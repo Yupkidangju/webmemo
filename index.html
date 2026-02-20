@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebMemo Pro</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- CodeMirror 6 is imported via ES Modules in app.js -->
+
+    <!-- Marked.js (for Markdown rendering) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- localForage (IndexedDB Wrapper for large capacity) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+    <!-- Google Fonts for UI & Editor -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+
+<body data-theme="white">
+    <div id="app" class="app-container">
+        <!-- Toolbar -->
+        <header class="toolbar" id="toolbar">
+            <div class="toolbar-brand">
+                <i class="ph ph-notebook"></i>
+                <span class="brand-text">WebMemo</span>
+            </div>
+            <div class="toolbar-actions">
+                <!-- Group 1: Files -->
+                <div class="btn-group">
+                    <button id="btn-new" title="새 파일 (Ctrl+N)"><i class="ph ph-file-plus"></i></button>
+                    <button id="btn-open" title="파일 열기 (Ctrl+O)"><i class="ph ph-folder-open"></i></button>
+                    <button id="btn-save" title="파일 저장 (Ctrl+S)"><i class="ph ph-floppy-disk-back"></i></button>
+                    <button id="btn-save-as" title="다른 이름으로 저장 (Ctrl+Shift+S)"><i
+                            class="ph ph-floppy-disk"></i></button>
+                    <button id="btn-backup" title="작업 공간 전체 백업 (.json)"><i class="ph ph-download-simple"></i></button>
+                    <button id="btn-restore" title="작업 공간 복원"><i class="ph ph-upload-simple"></i></button>
+                    <button id="btn-print" title="PDF 인쇄 (Ctrl+P)"><i class="ph ph-printer"></i></button>
+                </div>
+                <div class="divider"></div>
+                <!-- Group 2: Edit -->
+                <div class="btn-group">
+                    <button id="btn-undo" title="실행 취소 (Ctrl+Z)"><i class="ph ph-arrow-u-up-left"></i></button>
+                    <button id="btn-redo" title="다시 실행 (Ctrl+Y)"><i class="ph ph-arrow-u-up-right"></i></button>
+                    <button id="btn-search" title="검색/찾아 바꾸기 (Ctrl+F)"><i class="ph ph-magnifying-glass"></i></button>
+                </div>
+                <div class="divider"></div>
+                <div class="btn-group">
+                    <button id="btn-cut" title="잘라내기 (Ctrl+X)"><i class="ph ph-scissors"></i></button>
+                    <button id="btn-copy" title="복사 (Ctrl+C)"><i class="ph ph-copy"></i></button>
+                    <button id="btn-paste" title="붙여넣기 (Ctrl+V)"><i class="ph ph-clipboard"></i></button>
+                    <button id="btn-copy-all" title="전체 텍스트 복사"><i class="ph ph-files"></i></button>
+                    <button id="btn-readonly" title="읽기 전용 잠금"><i class="ph ph-lock-key-open"></i></button>
+                </div>
+                <div class="divider"></div>
+                <!-- Group 3: View & Theme -->
+                <div class="btn-group">
+                    <button id="btn-zoom-out" title="글꼴 축소 (Ctrl+Minus)"><i class="ph ph-minus-circle"></i></button>
+                    <button id="btn-zoom-in" title="글꼴 확대 (Ctrl+Plus)"><i class="ph ph-plus-circle"></i></button>
+                    <button id="btn-zen" title="젠 모드 (전체화면) (F11)"><i class="ph ph-arrows-out"></i></button>
+                </div>
+                <div class="divider"></div>
+                <div class="btn-group theme-selector">
+                    <i class="ph ph-globe"></i>
+                    <select id="ui-lang-select" title="인터페이스 언어 (UI Language)">
+                        <option value="ko">한국어</option>
+                        <option value="en">English</option>
+                        <option value="ja">日本語</option>
+                        <option value="zh-TW">繁體中文</option>
+                        <option value="zh-CN">简体中文</option>
+                    </select>
+                </div>
+                <div class="btn-group theme-selector">
+                    <select id="lang-select" title="언어 구문 강조 (Syntax Highlighting)">
+                        <option value="Plain Text">Plain Text</option>
+                        <option value="Markdown">Markdown</option>
+                        <option value="JavaScript">JavaScript</option>
+                        <option value="HTML">HTML / XML</option>
+                        <option value="CSS">CSS</option>
+                        <option value="Python">Python</option>
+                        <option value="C">C / C++</option>
+                        <option value="C#">C#</option>
+                        <option value="Java">Java</option>
+                        <option value="Rust">Rust</option>
+                        <option value="JSON">JSON</option>
+                        <option value="SQL">SQL</option>
+                    </select>
+                </div>
+                <div class="btn-group theme-selector">
+                    <i class="ph ph-palette"></i>
+                    <select id="theme-select" title="테마 변경">
+                        <option value="white">White</option>
+                        <option value="dark">Dark</option>
+                        <option value="monokai">Monokai</option>
+                        <option value="solarized-light">Solarized Light</option>
+                        <option value="solarized-dark">Solarized Dark</option>
+                    </select>
+                </div>
+                <div class="divider"></div>
+                <button id="btn-markdown" class="toggle-btn" title="마크다운 모드 전환 (Ctrl+M)">
+                    <i class="ph ph-markdown-logo"></i>
+                    <span id="label-markdown">Markdown</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Tab Bar -->
+        <nav class="tab-bar" id="tab-bar">
+            <div id="tab-container" class="tabs">
+                <!-- 탭 아이템 동적 생성 -->
+            </div>
+            <button id="btn-add-tab" class="add-tab" title="새 탭">
+                <i class="ph ph-plus"></i>
+            </button>
+            <button id="btn-undo-tab" class="add-tab" title="방금 닫은 탭 복구 (Ctrl+Shift+T)">
+                <i class="ph ph-arrow-counter-clockwise"></i>
+            </button>
+        </nav>
+
+        <!-- Editor & Preview Area -->
+        <main class="content-area" id="content-area">
+            <div class="editor-wrapper">
+                <textarea id="editor" style="display:none;"></textarea>
+
+                <!-- Custom Floating Search Modal -->
+                <div id="search-modal" class="search-modal hidden">
+                    <div class="search-header">
+                        <span id="search-title">찾기 / 바꾸기</span>
+                        <button id="btn-search-close" class="icon-btn"><i class="ph ph-x"></i></button>
+                    </div>
+                    <div class="search-body">
+                        <div class="search-row">
+                            <input type="text" id="search-input" placeholder="검색어 입력...">
+                            <button id="btn-search-prev" class="icon-btn" title="이전 찾기"><i
+                                    class="ph ph-arrow-up"></i></button>
+                            <button id="btn-search-next" class="icon-btn" title="다음 찾기"><i
+                                    class="ph ph-arrow-down"></i></button>
+                        </div>
+                        <div class="search-row">
+                            <input type="text" id="replace-input" placeholder="바꿀 내용...">
+                            <button id="btn-replace" title="바꾸기">바꾸기</button>
+                            <button id="btn-replace-all" title="모두 바꾸기">모두</button>
+                        </div>
+                        <div class="search-info">
+                            <span id="search-status"></span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div id="preview" class="markdown-preview hidden"></div>
+        </main>
+
+        <!-- Status Bar -->
+        <footer class="status-bar" id="status-bar">
+            <div class="status-left">
+                <span id="status-msg">준비됨</span>
+            </div>
+            <div class="status-right">
+                <span id="char-count">글자: 0</span>
+                <span id="word-count">단어: 0</span>
+                <span id="cursor-pos">줄: 1 | 열: 1</span>
+                <span>UTF-8</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Hidden Input for Backup -->
+    <input type="file" id="restore-input" accept=".json" style="display: none;">
+
+    <!-- Logic (Dynamic Import workaround for offline double-click) -->
+    <script src="app.js"></script>
+</body>
+
+</html>

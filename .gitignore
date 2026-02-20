@@ -1,0 +1,4 @@
+*.md
+!README.md
+!CHANGELOG.md
+!BUILD_GUIDE.md
