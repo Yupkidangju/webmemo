@@ -390,6 +390,57 @@ body.zen-mode .content-area {
     background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
+/* ==========================================
+ * [v2.3.0] Feature: Minimap (Scroll Miniview)
+ * @replit/codemirror-minimap 커스텀 스타일
+ * VS Code 스타일의 우측 축소 코드 미니뷰
+ * ========================================== */
+
+/* 미니맵 컨테이너: 에디터 우측에 고정 배치 */
+.cm-minimap {
+    background-color: var(--bg-toolbar) !important;
+    border-left: 1px solid var(--border-color) !important;
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
+}
+
+/* 마우스 호버 시 미니맵 선명도 향상 */
+.cm-minimap:hover {
+    opacity: 1;
+}
+
+/* 뷰포트 오버레이: 현재 보이는 영역을 반투명 사각형으로 표시 */
+.cm-minimap-overlay {
+    background-color: rgba(0, 120, 212, 0.15) !important;
+    border: 1px solid rgba(0, 120, 212, 0.3) !important;
+    border-radius: 2px;
+    transition: background-color 0.15s ease;
+}
+
+/* 오버레이 호버 시 더 진한 강조 */
+.cm-minimap-overlay:hover {
+    background-color: rgba(0, 120, 212, 0.25) !important;
+}
+
+/* 다크 테마 계열 미니맵 오버레이 색상 조정 */
+[data-theme="dark"] .cm-minimap-overlay,
+[data-theme="monokai"] .cm-minimap-overlay,
+[data-theme="solarized-dark"] .cm-minimap-overlay {
+    background-color: rgba(100, 180, 255, 0.12) !important;
+    border-color: rgba(100, 180, 255, 0.25) !important;
+}
+
+[data-theme="dark"] .cm-minimap-overlay:hover,
+[data-theme="monokai"] .cm-minimap-overlay:hover,
+[data-theme="solarized-dark"] .cm-minimap-overlay:hover {
+    background-color: rgba(100, 180, 255, 0.22) !important;
+}
+
+/* Monokai 테마 미니맵 특수 강조 (형광 그린 포인트) */
+[data-theme="monokai"] .cm-minimap-overlay {
+    border-color: rgba(166, 226, 46, 0.3) !important;
+}
+
 /* Print Rules */
 @media print {
 

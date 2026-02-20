@@ -6,6 +6,8 @@ let languages;
 let SearchCursor;
 let syntaxHighlighting, defaultHighlightStyle, bracketMatching;
 let closeBrackets;
+// [v2.3.0] 미니맵 (스크롤 미니뷰) 확장 의존성
+let showMinimap;
 
 let languageConf;
 let readOnlyConf;
@@ -33,6 +35,11 @@ async function loadCM6() {
 
     const ac = await import("https://esm.sh/@codemirror/autocomplete");
     closeBrackets = ac.closeBrackets;
+
+    // [v2.3.0] Replit 제작 CodeMirror 6 미니맵 확장 동적 로딩
+    // VS Code 스타일의 우측 축소 코드 미니뷰 + 반투명 뷰포트 오버레이 제공
+    const minimap = await import("https://esm.sh/@replit/codemirror-minimap");
+    showMinimap = minimap.showMinimap;
 
     languageConf = new Compartment();
     readOnlyConf = new Compartment();
@@ -447,8 +454,16 @@ async function autoDetectSyntax(filename) {
     }
 }
 
-// Initialize CodeMirror
+// [v2.3.0] CodeMirror 6 초기화 함수 - 미니맵 확장 통합
+// Replit의 codemirror-minimap 패키지를 extensions에 포함하여
+// 에디터 우측에 VS Code 스타일의 축소 코드 미니뷰를 렌더링함
 function initCodeMirror() {
+    // 미니맵 인스턴스 생성 팩토리: 미니맵 컨테이너 DOM 요소를 반환
+    const createMinimap = (v) => {
+        const dom = document.createElement('div');
+        return { dom };
+    };
+
     cm = new EditorView({
         state: EditorState.create({
             doc: "",
@@ -466,6 +481,16 @@ function initCodeMirror() {
                 themeConf.of([]),
                 fontConf.of([]),
                 EditorState.allowMultipleSelections.of(true),
+                // [v2.3.0] 미니맵(스크롤 미니뷰) 확장 등록
+                // displayText: 'blocks' → 코드를 추상적 블록으로 축소 표현 (가독성 및 성능 최적화)
+                // showOverlay: 'always' → 현재 뷰포트 위치를 반투명 사각형으로 항상 표시
+                showMinimap.compute(['doc'], (state) => {
+                    return {
+                        create: createMinimap,
+                        displayText: 'blocks',
+                        showOverlay: 'always',
+                    };
+                }),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         window.searchLastQuery = null;
@@ -506,7 +531,7 @@ function initCodeMirror() {
         }),
         parent: document.querySelector('.editor-wrapper')
     });
-    // Use code editor from CM6
+    // CM6 에디터로 대체되므로 원본 textarea 숨김
     editorTextarea.style.display = 'none';
 }
 function updateStats() {
