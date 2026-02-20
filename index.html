@@ -159,6 +159,25 @@
                     </div>
                 </div>
 
+                <!-- Confirm Close Modal -->
+                <div id="confirm-modal" class="search-modal hidden"
+                    style="padding: 16px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 2000;">
+                    <p id="confirm-msg"
+                        style="margin-top: 0; margin-bottom: 20px; font-size: 14px; text-align: center; color: var(--text-main); line-height: 1.5;">
+                        저장하지 않은 변경사항이 있습니다.<br>저장하시겠습니까?
+                    </p>
+                    <div style="display: flex; gap: 8px; justify-content: center;">
+                        <button id="btn-confirm-save"
+                            style="flex: 1; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">저장</button>
+                        <button id="btn-confirm-discard"
+                            style="flex: 1; padding: 8px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">저장
+                            안함</button>
+                        <button id="btn-confirm-cancel"
+                            style="flex: 1; padding: 8px; background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-size: 13px;">닫기
+                            취소</button>
+                    </div>
+                </div>
+
             </div>
             <div id="preview" class="markdown-preview hidden"></div>
         </main>

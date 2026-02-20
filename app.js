@@ -108,7 +108,11 @@ const i18nDict = {
         'stats-char': '글자',
         'stats-word': '단어',
         'stats-line': '줄',
-        'stats-col': '열'
+        'stats-col': '열',
+        'confirm-msg': '저장하지 않은 변경사항이 있습니다.<br>저장하시겠습니까?',
+        'btn-confirm-save': '저장',
+        'btn-confirm-discard': '저장 안함',
+        'btn-confirm-cancel': '닫기 취소'
     },
     'en': {
         'btn-new': 'New File (Ctrl+N)',
@@ -147,7 +151,11 @@ const i18nDict = {
         'stats-char': 'Char',
         'stats-word': 'Word',
         'stats-line': 'Ln',
-        'stats-col': 'Col'
+        'stats-col': 'Col',
+        'confirm-msg': 'You have unsaved changes.<br>Do you want to save?',
+        'btn-confirm-save': 'Save',
+        'btn-confirm-discard': 'Discard',
+        'btn-confirm-cancel': 'Cancel'
     },
     'ja': {
         'btn-new': '新規ファイル (Ctrl+N)',
@@ -186,7 +194,11 @@ const i18nDict = {
         'stats-char': '文字',
         'stats-word': '単語',
         'stats-line': '行',
-        'stats-col': '列'
+        'stats-col': '列',
+        'confirm-msg': '保存されていない変更があります。<br>保存しますか？',
+        'btn-confirm-save': '保存',
+        'btn-confirm-discard': '破棄',
+        'btn-confirm-cancel': 'キャンセル'
     },
     'zh-TW': {
         'btn-new': '新檔案 (Ctrl+N)',
@@ -225,7 +237,11 @@ const i18nDict = {
         'stats-char': '字元',
         'stats-word': '單字',
         'stats-line': '行',
-        'stats-col': '列'
+        'stats-col': '列',
+        'confirm-msg': '您有未儲存的變更。<br>是否要儲存？',
+        'btn-confirm-save': '儲存',
+        'btn-confirm-discard': '不儲存',
+        'btn-confirm-cancel': '取消'
     },
     'zh-CN': {
         'btn-new': '新文件 (Ctrl+N)',
@@ -264,7 +280,11 @@ const i18nDict = {
         'stats-char': '字符',
         'stats-word': '单词',
         'stats-line': '行',
-        'stats-col': '列'
+        'stats-col': '列',
+        'confirm-msg': '您有未保存的更改。<br>是否要保存？',
+        'btn-confirm-save': '保存',
+        'btn-confirm-discard': '不保存',
+        'btn-confirm-cancel': '取消'
     }
 };
 
@@ -348,6 +368,16 @@ function applyLanguage(langCode) {
     if (statusMsg && statusMsg.textContent === i18nDict[appData.uiLang]['status-ready']) {
         statusMsg.textContent = dict['status-ready'];
     }
+
+    // Translation for confirm modal
+    const cMsg = document.getElementById('confirm-msg');
+    if (cMsg) cMsg.innerHTML = dict['confirm-msg'];
+    const cSave = document.getElementById('btn-confirm-save');
+    if (cSave) cSave.textContent = dict['btn-confirm-save'];
+    const cDiscard = document.getElementById('btn-confirm-discard');
+    if (cDiscard) cDiscard.textContent = dict['btn-confirm-discard'];
+    const cCancel = document.getElementById('btn-confirm-cancel');
+    if (cCancel) cCancel.textContent = dict['btn-confirm-cancel'];
 
     // Label override
     const mdLabel = document.getElementById('label-markdown');
@@ -448,6 +478,7 @@ function initCodeMirror() {
                             updateStats();
                             const ui = document.querySelector(`.tab[data-id="${activeTab.id}"] .tab-title`);
                             if (ui) ui.classList.add('modified');
+                            activeTab.isModified = true;
                             showStatus(i18nDict[appData.uiLang]['status-saving'] || '작성중...');
                             clearTimeout(window.saveTimer);
                             window.saveTimer = setTimeout(() => { saveToStorage(); }, 2000);
@@ -519,7 +550,7 @@ function renderTabs() {
         let displayTitle = tab.title || '무제 ' + (index + 1);
 
         tabEl.innerHTML = `
-            <span class="tab-title ${tab.readonly ? 'readonly' : ''}" title="${displayTitle}">${displayTitle}</span>
+            <span class="tab-title ${tab.readonly ? 'readonly' : ''} ${tab.isModified ? 'modified' : ''}" title="${displayTitle}">${displayTitle}</span>
             <button class="tab-close" data-id="${tab.id}"><i class="ph ph-x"></i></button>
         `;
 
@@ -548,7 +579,7 @@ function renderTabs() {
 
         tabEl.querySelector('.tab-close').addEventListener('click', (e) => {
             e.stopPropagation();
-            closeTab(tab.id);
+            requestCloseTab(tab.id);
         });
 
         tabContainer.appendChild(tabEl);
@@ -562,6 +593,20 @@ function switchTab(id) {
     renderTabs();
     loadActiveTabContent();
     saveToStorage();
+}
+
+let pendingCloseTabId = null;
+
+function requestCloseTab(id) {
+    const tab = appData.tabs.find(t => t.id === id);
+    if (!tab) return;
+
+    if (tab.isModified) {
+        pendingCloseTabId = id;
+        document.getElementById('confirm-modal').classList.remove('hidden');
+    } else {
+        closeTab(id);
+    }
 }
 
 function closeTab(id) {
@@ -594,6 +639,7 @@ function addTab(title = '새 문서', content = '', lang = 'text/plain', handle 
         content: content,
         lang: lang,
         readonly: false,
+        isModified: false,
         handle: handle
     };
     appData.tabs.push(newTab);
@@ -765,6 +811,7 @@ async function handleSaveFile(saveAs = false) {
             await writable.close();
 
             // Remove modification star and auto-detect syntax based on new name
+            activeTab.isModified = false;
             const currentTabUI = document.querySelector(`.tab[data-id="${appData.activeTabId}"] .tab-title`);
             if (currentTabUI) currentTabUI.classList.remove('modified');
             autoDetectSyntax(handle.name);
@@ -789,6 +836,7 @@ async function handleSaveFile(saveAs = false) {
             a.click();
             setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
 
+            activeTab.isModified = false;
             const currentTabUI = document.querySelector(`.tab[data-id="${appData.activeTabId}"] .tab-title`);
             if (currentTabUI) currentTabUI.classList.remove('modified');
 
@@ -1020,6 +1068,36 @@ function setupEventListeners() {
 
     // Window Resize fixes CM layout
     window.addEventListener('resize', () => { /* cm.refresh() not needed in CM6 */ });
+
+    // Confirm Modal Events
+    document.getElementById('btn-confirm-save').addEventListener('click', async () => {
+        if (pendingCloseTabId) {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            if (appData.activeTabId !== pendingCloseTabId) {
+                switchTab(pendingCloseTabId);
+            }
+            try {
+                await handleSaveFile(false);
+                closeTab(pendingCloseTabId);
+                pendingCloseTabId = null;
+            } catch (e) {
+                console.warn("Save cancelled, tab will remain open.");
+            }
+        }
+    });
+
+    document.getElementById('btn-confirm-discard').addEventListener('click', () => {
+        document.getElementById('confirm-modal').classList.add('hidden');
+        if (pendingCloseTabId) {
+            closeTab(pendingCloseTabId);
+            pendingCloseTabId = null;
+        }
+    });
+
+    document.getElementById('btn-confirm-cancel').addEventListener('click', () => {
+        document.getElementById('confirm-modal').classList.add('hidden');
+        pendingCloseTabId = null;
+    });
 }
 
 // ==========================================
