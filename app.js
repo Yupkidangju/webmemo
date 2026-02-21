@@ -833,6 +833,7 @@ function addTab(title = null, content = '', lang = 'text/plain', handle = null) 
     saveToStorage();
     if (handle) autoDetectSyntax(title || defaultTitle);
     cm.focus();
+    return newTab.id; // [7차 감사 2] 다중 파일 드롭 레이스 컨디션 방지용
 }
 
 function undoCloseTab() {
@@ -1240,15 +1241,25 @@ function setupEventListeners() {
             const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
             if (headings[idx]) {
                 headings[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
-                // 에디터에서도 해당 라인으로 커서 이동
+                // [쟌둥이 헤딩 수정] 문자열 검색 대신 n번째 헤딩 출현 순서로 정확한 라인 찾기
+                // 동일한 텍스트의 헤딩이 여러 개 있어도 정확한 위치로 이동
                 const docText = cm.state.doc.toString();
                 const lines = docText.split('\n');
                 const headingText = headings[idx].textContent.trim();
+                let matchCount = 0; // 동일 헤딩 출현 횟수 카운터
+                // 이 헤딩이 프리뷰에서 몇 번째 동일 헤딩인지 계산
+                let targetOccurrence = 0;
+                for (let h = 0; h < idx; h++) {
+                    if (headings[h].textContent.trim() === headingText) targetOccurrence++;
+                }
                 for (let i = 0; i < lines.length; i++) {
                     if (lines[i].replace(/^#+\s*/, '').trim() === headingText) {
-                        const pos = cm.state.doc.line(i + 1).from;
-                        cm.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
-                        break;
+                        if (matchCount === targetOccurrence) {
+                            const pos = cm.state.doc.line(i + 1).from;
+                            cm.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
+                            break;
+                        }
+                        matchCount++;
                     }
                 }
             }
@@ -1306,7 +1317,11 @@ function setupEventListeners() {
         searchInput.select();
     });
 
+    // [7차 감사 1] 읽기 전용 모드에서 Cut/Paste 방어 가드
+    // CM6 readOnly는 키보드 입력만 막고 cm.dispatch()로 주입되는 프로그래마톱 변경은 차단 못함
     document.getElementById('btn-cut').addEventListener('click', () => {
+        const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+        if (activeTab && activeTab.readonly) { showStatus('🔒 읽기 전용 모드'); return; }
         const selection = cm.state.sliceDoc(cm.state.selection.main.from, cm.state.selection.main.to);
         if (selection) {
             navigator.clipboard.writeText(selection).then(() => {
@@ -1325,6 +1340,8 @@ function setupEventListeners() {
     });
 
     document.getElementById('btn-paste').addEventListener('click', () => {
+        const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+        if (activeTab && activeTab.readonly) { showStatus('🔒 읽기 전용 모드'); return; }
         navigator.clipboard.readText().then(text => {
             if (text) {
                 cm.dispatch(cm.state.replaceSelection(text));
@@ -1468,7 +1485,9 @@ function setupEventListeners() {
         const files = e.dataTransfer.files;
         if (!files || files.length === 0) return;
 
-        // 드롭된 파일들을 순회하며 텍스트 파일만 새 탭으로 열기
+        // [7차 감사 2] 다중 파일 드롭 레이스 컨디션 방지
+        // 각 FileReader.onload에서 addTab이 반환하는 tabId를 캐처하여
+        // 해당 탭으로 switchTab 후 구문 감지 (활성 탭에 의존하지 않음)
         Array.from(files).forEach(file => {
             const textExtensions = ['txt', 'md', 'markdown', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'htm', 'xml', 'json', 'py', 'java', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sh', 'bat', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'log', 'csv', 'sql', 'svg'];
             const ext = file.name.split('.').pop().toLowerCase();
@@ -1479,7 +1498,9 @@ function setupEventListeners() {
             }
             const reader = new FileReader();
             reader.onload = (ev) => {
-                addTab(file.name, ev.target.result, 'text/plain');
+                const newTabId = addTab(file.name, ev.target.result, 'text/plain');
+                // 해당 탭으로 명시적 전환 후 구문 감지 (레이스 컨디션 방지)
+                if (newTabId) switchTab(newTabId);
                 autoDetectSyntax(file.name);
                 showStatus(`📂 ${file.name} 열림`);
             };
@@ -1598,6 +1619,8 @@ function setupSearchController() {
 
     // Replace Logic
     document.getElementById('btn-replace').addEventListener('click', () => {
+        const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+        if (activeTab && activeTab.readonly) { showStatus('🔒 읽기 전용 모드'); return; }
         const query = searchInput.value;
         const replacement = replaceInput.value;
         if (!query) return;
@@ -1619,6 +1642,8 @@ function setupSearchController() {
     });
 
     document.getElementById('btn-replace-all').addEventListener('click', () => {
+        const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+        if (activeTab && activeTab.readonly) { showStatus('🔒 읽기 전용 모드'); return; }
         const query = searchInput.value;
         const replacement = replaceInput.value;
         if (!query) return;

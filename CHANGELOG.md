@@ -12,6 +12,11 @@
 - **DropZone 오버레이 잔상(Ghost) 해결**: `dragenter`/`dragleave` 카운터 패턴 적용. 자식 요소 버블링에 의한 잔상 완벽 방지.
 - **TOC 이벤트 위임(Event Delegation)**: 개별 아이템 `addEventListener` → 부모 컨테이너 1회 등록. `dataset.tocIdx`로 클릭된 헤딩 식별. 매 키입력 시 리스너 누적 방지.
 
+### Fixed (수정됨) - 7차 감사 패치
+- **읽기 전용 모드 백도어 차단**: Cut/Paste/Replace/Replace All 버튼에 `if (activeTab.readonly) return;` 방어 가드 추가. CM6 `readOnly`는 키보드만 막고 `cm.dispatch()` 프로그래마틱 변경은 차단 못하는 구조적 허점 보완.
+- **다중 파일 드롭 레이스 컨디션 방지**: `addTab()` 반환값(tabId)을 캡처하여 `switchTab(newTabId)` 후 구문 감지. 비동기 `FileReader.onload` 동시 폭격 시 `activeTabId` 불일치로 인한 구문 색상 오적용 방지.
+- **쌍둥이 헤딩 TOC 스크롤 함정 해결**: 동일 텍스트 헤딩(예: `## 결론` 2개)이 있을 때, 문자열 첫 매칭이 아닌 프리뷰 DOM 인덱스 기반 n번째 출현 위치로 정확히 이동.
+
 ## [v2.7.0] - 2026-02-21
 ### Added (추가됨) - Gemini 제안 기능
 - **파일 드래그&드롭 오픈 (File DropZone)**: 탐색기/바탕화면에서 텍스트 파일을 브라우저에 드래그하면 새 탭으로 즉시 열림. 드롭 시 반투명 오버레이 + "📂 파일을 여기에 놓으세요" 시각 피드백. 30개 이상의 텍스트 확장자(`.txt`, `.md`, `.js`, `.py` 등) 자동 인식.
