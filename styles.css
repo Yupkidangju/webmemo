@@ -281,8 +281,11 @@ body.zen-mode .content-area {
     filter: brightness(1.15);
 }
 
+/* [v2.6.0] select 드롭다운 명도 대비 수정
+   이전: background: transparent → 다크 테마에서 하얀 배경에 밝은 글자가 겹쳐 보이지 않음
+   수정: 툴바 배경색 명시 적용 + option 태그에도 테마 변수 강제 주입 */
 .theme-selector select {
-    background: transparent;
+    background-color: var(--bg-toolbar);
     color: var(--text-main);
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -291,6 +294,11 @@ body.zen-mode .content-area {
     font-size: 13px;
     outline: none;
     cursor: pointer;
+}
+
+.theme-selector select option {
+    background-color: var(--bg-main);
+    color: var(--text-main);
 }
 
 /* Tab Bar */

@@ -6,10 +6,11 @@
 ### Added (추가됨)
 - **탭 드래그&드롭 순서 변경**: HTML5 Drag API로 외부 라이브러리 없이 네이티브 구현. 드래그 시 반투명 + 드롭 대상에 accent 보더 시각적 피드백.
 - **탭별 스크롤 위치 저장**: 탭 전환 시 현재 스크롤 위치를 `tab.scrollTop`에 저장하고, 돌아올 때 `requestAnimationFrame`으로 복원. 대형 파일 작업 시 UX 대폭 향상.
-- **Ctrl+Tab / Ctrl+Shift+Tab 탭 전환**: 브라우저 탭 전환과 동일한 UX. 순환(Circular) 방식으로 마지막↔첫번째 탭 이동 가능.
+- **Ctrl+PageDown / Ctrl+PageUp 탭 전환**: VS Code 표준 에디터 단축키. 순환(Circular) 방식으로 마지막↔첫번째 탭 이동 가능. (Ctrl+Tab은 브라우저 시스템 단축키 충돌로 사용 불가)
 
 ### Fixed (수정됨)
 - **showStatus() i18n 버그 수정**: 2초 후 하드코딩된 한국어 '준비됨'으로 복귀하던 문제 해결. 현재 UI 언어에 맞는 `status-ready` 딕셔너리 값 참조.
+- **select 드롭다운 명도 대비 버그 수정**: 다크 테마에서 `background: transparent`로 인해 하얀 배경에 밝은 글자가 겹치는 문제 해결. `var(--bg-toolbar)` + `option` 태그 명시적 스타일 적용.
 
 ## [v2.5.4] - 2026-02-21
 ### Fixed (수정됨) - 5차 최종 감사 (아키텍처/상태관리)

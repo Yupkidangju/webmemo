@@ -1260,18 +1260,19 @@ function setupEventListeners() {
         } else if (e.key === 'F11') {
             e.preventDefault();
             document.getElementById('btn-zen').click();
-            // [v2.6.0] Ctrl+Tab / Ctrl+Shift+Tab 탭 전환
-            // 브라우저 탭 전환과 동일한 UX 제공
-        } else if (e.ctrlKey && e.key === 'Tab') {
+            // [v2.6.0] Ctrl+PageDown(다음 탭) / Ctrl+PageUp(이전 탭) 전환
+            // Ctrl+Tab은 브라우저 시스템 단축키로 오버라이딩 불가
+            // VS Code 표준 에디터 단축키 사용
+        } else if (e.ctrlKey && (e.key === 'PageDown' || e.key === 'PageUp')) {
             e.preventDefault();
             const currentIdx = appData.tabs.findIndex(t => t.id === appData.activeTabId);
             if (appData.tabs.length > 1) {
                 let nextIdx;
-                if (e.shiftKey) {
-                    // Ctrl+Shift+Tab → 이전 탭 (순환)
+                if (e.key === 'PageUp') {
+                    // Ctrl+PageUp → 이전 탭 (순환)
                     nextIdx = (currentIdx - 1 + appData.tabs.length) % appData.tabs.length;
                 } else {
-                    // Ctrl+Tab → 다음 탭 (순환)
+                    // Ctrl+PageDown → 다음 탭 (순환)
                     nextIdx = (currentIdx + 1) % appData.tabs.length;
                 }
                 switchTab(appData.tabs[nextIdx].id);
