@@ -329,37 +329,44 @@ const btnReadonly = document.getElementById('btn-readonly');
 const fileInput = document.getElementById('file-input');
 const restoreInput = document.getElementById('restore-input');
 
-// [v2.5.0] IndexedDB 저장 함수 (보안 감사 반영)
-// FileHandle 직렬화 전처리 + 저장 실패 시 비상 JSON 다운로드 폴백 추가
+// [v2.5.1] IndexedDB 저장 함수 (2차 감사 반영)
+// [2차 감사 1] 비상 백업 세션당 1회 제한 (emergencyTriggered 플래그)
+// [2차 감사 2] FileHandle 객체 원복 — IndexedDB는 structured clone으로 정상 직렬화 지원
+let emergencyTriggered = false; // 비상 백업 스팸 방지 플래그
+
 async function saveToStorage() {
-    // [감사 2-2] FileHandle 객체 명시적 직렬화 전처리
-    // FileHandle은 structured clone 가능하지만, 명시적으로 제외하여 안전성 확보
-    const dataToSave = {
-        ...appData,
-        tabs: appData.tabs.map(t => ({ ...t, handle: null }))
-    };
+    // FileHandle 객체는 IndexedDB의 structured clone으로 완벽하게 직렬화됨
+    // null 처리 시 새로고침마다 파일 연결 상태가 초기화되는 UX 퇴행 발생 (2차 감사에서 발견)
+    const dataToSave = { ...appData };
     try {
         await localforage.setItem(STORAGE_KEY, dataToSave);
         const savedMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-saved'] : '저장됨';
         showStatus(savedMsg);
     } catch (err) {
         console.error('Save to IndexedDB failed', err);
-        // [감사 2-1] 저장 실패 시 비상 JSON 다운로드 유도
-        // QuotaExceededError 등으로 IndexedDB 저장 불가 시 데이터 유실 방지
         const errMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-error'] : '저장 오류';
-        showStatus(errMsg + ' - 비상 백업 다운로드 시도');
-        try {
-            const emergencyData = JSON.stringify(dataToSave, null, 2);
-            const blob = new Blob([emergencyData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `webmemo_emergency_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-        } catch (backupErr) {
-            console.error('Emergency backup also failed', backupErr);
+        // [2차 감사 1] 비상 백업 세션당 1회만 실행
+        // 저장소 용량 초과 시 2초마다 자동저장 트리거로 무한 다운로드 스팸 방지
+        if (!emergencyTriggered) {
+            emergencyTriggered = true;
+            showStatus(errMsg + ' - 비상 백업 1회 다운로드');
+            try {
+                // 비상 백업용 데이터에서는 handle을 제외 (JSON 직렬화 불가)
+                const backupData = { ...appData, tabs: appData.tabs.map(t => ({ ...t, handle: null })) };
+                const emergencyData = JSON.stringify(backupData, null, 2);
+                const blob = new Blob([emergencyData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `webmemo_emergency_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+            } catch (backupErr) {
+                console.error('Emergency backup also failed', backupErr);
+            }
+        } else {
+            showStatus(errMsg + ' - 용량 부족 (데이터 정리 필요)');
         }
     }
 }
@@ -771,21 +778,26 @@ function updateActiveTabContent() {
     }
 }
 
-// [v2.2.0] 마크다운 프리뷰 갱신 함수
-// marked.parse() 호출 시 breaks: true 옵션을 적용하여
-// 사용자가 에디터에서 엔터(단일 줄바꿈)를 입력하면 <br> 태그로 변환되도록 처리.
-// 이전 버전에서 줄바꿈이 무시되어 텍스트가 한 줄로 이어 보이던 문제를 해결.
-// DOMPurify를 통한 XSS 방어는 그대로 유지.
+// [v2.5.1] 마크다운 프리뷰 갱신 함수 (2차 감사 반영)
+// DOMPurify 훅으로 target="_blank" 링크에 noopener noreferrer 자동 부여
 function updateMarkdownPreview() {
     if (appData.markdownMode) {
         const docText = cm.state.doc.toString() || '';
         // [감사 4-2] 대용량 문서(100KB 초과) 프리뷰 보호
-        // marked.parse()가 동기적으로 UI 스레드를 블로킹하여 프리징을 유발하는 것을 방지
         if (docText.length > 100000) {
             preview.textContent = '⚠️ 문서가 너무 큽니다 (100KB 초과). 마크다운 프리뷰가 비활성화되었습니다.';
             return;
         }
+        // [2차 감사 3] DOMPurify afterSanitizeAttributes 훅
+        // target="_blank" 링크에 rel="noopener noreferrer" 자동 부여하여
+        // window.opener 취약점을 통한 외부 페이지 조작 공격 방지
+        DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+            if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+                node.setAttribute('rel', 'noopener noreferrer');
+            }
+        });
         preview.innerHTML = DOMPurify.sanitize(marked.parse(docText));
+        DOMPurify.removeHook('afterSanitizeAttributes');
     }
 }
 

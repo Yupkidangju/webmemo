@@ -2,6 +2,14 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v2.5.1] - 2026-02-21
+### Fixed (수정됨) - 2차 감사
+- **비상 백업 무한 다운로드 스팸 방지**: `emergencyTriggered` 플래그로 비상 JSON 다운로드를 세션당 1회로 제한. 저장소 용량 초과 시 자동저장 트리거에 의한 무한 다운로드 루프 원천 차단.
+- **FileHandle UX 퇴행 복구**: `saveToStorage()`에서 FileHandle을 `null`로 치환하던 과잉 방어 코드 제거. IndexedDB의 structured clone이 FileHandle 직렬화를 공식 지원하므로, 새로고침 후에도 파일 연결 상태가 유지됨.
+
+### Security (보안) - 2차 감사
+- **DOMPurify target=_blank 보안 강화**: `afterSanitizeAttributes` 훅으로 마크다운 프리뷰의 모든 `target="_blank"` 링크에 `rel="noopener noreferrer"`를 자동 부여. `window.opener` 취약점을 통한 외부 페이지 조작 공격 방지.
+
 ## [v2.5.0] - 2026-02-21
 ### Security (보안)
 - **CDN Subresource Integrity(SRI) 적용**: `marked.js`, `DOMPurify`, `localForage` 3종 CDN 스크립트에 SHA-384 해시(`integrity` 속성) 추가. CDN 침해 시 변조된 스크립트 실행 원천 차단.
