@@ -6,6 +6,12 @@
 ### Added (추가됨) - 킬러 기능
 - **Vim 모드 (Opt-in)**: `@replit/codemirror-vim`을 esm.sh로 동적 로딩. Normal/Insert/Visual 모드, `:w`, `:q` 등 Vim 커맨드 완벽 지원. 툴바 Vim 토글 스위치로 활성화/비활성화. `Compartment` 패턴으로 런타임 동적 on/off 가능. 기본값 OFF(일반 사용자 보호). IndexedDB에 상태 저장되어 다음 접속 시 자동 복원.
 
+### Fixed (수정됨) - 6차 감사 패치
+- **Vim `:w`/`:wq` 커맨드 브릿지**: `Vim.defineEx()`로 `:w` → `handleSaveFile()`, `:wq` → 저장 후 탭 닫기 연결. Vim 유저의 습관적 저장 명령이 네이티브 저장과 동기화.
+- **로컬 타임머신 FIFO 방어 강화**: `if (history.length > 10)` → `while (history.length > 10)` 변경. push 수행 여부와 무관하게 항상 최대 개수 검사.
+- **DropZone 오버레이 잔상(Ghost) 해결**: `dragenter`/`dragleave` 카운터 패턴 적용. 자식 요소 버블링에 의한 잔상 완벽 방지.
+- **TOC 이벤트 위임(Event Delegation)**: 개별 아이템 `addEventListener` → 부모 컨테이너 1회 등록. `dataset.tocIdx`로 클릭된 헤딩 식별. 매 키입력 시 리스너 누적 방지.
+
 ## [v2.7.0] - 2026-02-21
 ### Added (추가됨) - Gemini 제안 기능
 - **파일 드래그&드롭 오픈 (File DropZone)**: 탐색기/바탕화면에서 텍스트 파일을 브라우저에 드래그하면 새 탭으로 즉시 열림. 드롭 시 반투명 오버레이 + "📂 파일을 여기에 놓으세요" 시각 피드백. 30개 이상의 텍스트 확장자(`.txt`, `.md`, `.js`, `.py` 등) 자동 인식.

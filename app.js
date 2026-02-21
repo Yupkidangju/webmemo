@@ -51,6 +51,18 @@ async function loadCM6() {
     // Normal/Insert/Visual 모드, :w, :q 등 Vim 커맨드 지원
     const vimModule = await import("https://esm.sh/@replit/codemirror-vim");
     vim = vimModule.vim;
+    const Vim = vimModule.Vim;
+
+    // [v2.8.0 패치] Vim :w/:wq 커맨드 → WebMemo 네이티브 저장 브릿지
+    // Vim 유저가 습관적으로 :w 입력 시 handleSaveFile() 호출
+    Vim.defineEx('write', 'w', () => {
+        handleSaveFile(false);
+    });
+    Vim.defineEx('wq', 'wq', async () => {
+        await handleSaveFile(false);
+        // 저장 후 현재 탭 닫기 시도
+        requestCloseTab(appData.activeTabId);
+    });
 
     languageConf = new Compartment();
     readOnlyConf = new Compartment();
@@ -369,9 +381,9 @@ async function saveToStorage() {
                         title: tab.title,
                         timestamp: new Date().toISOString()
                     });
-                    // 최대 10개 유지 (FIFO)
-                    if (history.length > 10) history.shift();
                 }
+                // 최대 10개 유지 (FIFO) - push 수행 여부와 무관하게 항상 검사
+                while (history.length > 10) history.shift();
             });
             // 삭제된 탭의 스냅샷 정리
             const activeIds = new Set(appData.tabs.map(t => t.id));
@@ -910,33 +922,20 @@ function updateMarkdownPreview() {
         }
         preview.innerHTML = DOMPurify.sanitize(marked.parse(docText));
 
-        // [v2.7.0] Floating TOC 동적 생성
-        // 프리뷰 DOM에서 h1~h6 헤딩을 추출하여 목차 리스트 구성
+        // [v2.7.0 패치] Floating TOC - 이벤트 위임(Event Delegation) 방식
+        // 매 키입력마다 개별 아이템에 리스너를 다는 대신 부모에 1회 등록
         if (tocEl) {
             const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
             if (headings.length > 0) {
                 tocEl.classList.remove('hidden');
                 tocEl.innerHTML = '<div class="md-toc-title">📑 목차</div>';
                 headings.forEach((h, idx) => {
-                    const level = parseInt(h.tagName[1]); // 1~6
+                    const level = parseInt(h.tagName[1]);
                     const item = document.createElement('div');
                     item.className = 'md-toc-item md-toc-h' + level;
                     item.textContent = h.textContent;
                     item.title = h.textContent;
-                    // 클릭 시 프리뷰에서 해당 헤딩으로 스크롤
-                    item.addEventListener('click', () => {
-                        h.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        // 에디터에서도 해당 라인으로 커서 이동
-                        const lines = docText.split('\n');
-                        const headingText = h.textContent.trim();
-                        for (let i = 0; i < lines.length; i++) {
-                            if (lines[i].replace(/^#+\s*/, '').trim() === headingText) {
-                                const pos = cm.state.doc.line(i + 1).from;
-                                cm.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
-                                break;
-                            }
-                        }
-                    });
+                    item.dataset.tocIdx = idx; // 이벤트 위임용 인덱스
                     tocEl.appendChild(item);
                 });
             } else {
@@ -1229,6 +1228,33 @@ function setupEventListeners() {
             showStatus(appData.vimMode ? '⌨️ Vim 모드 켜짐 (ESC → 명령 모드)' : '일반 모드');
         });
     }
+
+    // [v2.7.0 패치] TOC 이벤트 위임: 부모 컨테이너에 1회만 등록
+    // updateMarkdownPreview()에서 DOM을 매번 재생성해도 리스너가 누적되지 않음
+    const tocContainer = document.getElementById('md-toc');
+    if (tocContainer) {
+        tocContainer.addEventListener('click', (e) => {
+            const item = e.target.closest('.md-toc-item');
+            if (!item) return;
+            const idx = parseInt(item.dataset.tocIdx);
+            const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            if (headings[idx]) {
+                headings[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // 에디터에서도 해당 라인으로 커서 이동
+                const docText = cm.state.doc.toString();
+                const lines = docText.split('\n');
+                const headingText = headings[idx].textContent.trim();
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].replace(/^#+\s*/, '').trim() === headingText) {
+                        const pos = cm.state.doc.line(i + 1).from;
+                        cm.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
     // Toolbar Basic Action
     document.getElementById('btn-new').addEventListener('click', () => addTab());
     document.getElementById('btn-save').addEventListener('click', () => handleSaveFile(false));
@@ -1417,30 +1443,33 @@ function setupEventListeners() {
     });
 
     // [v2.7.0] 파일 드래그&드롭 오픈 (File DropZone)
-    // 탐색기/바탕화면에서 파일을 브라우저 영역에 드롭하면 새 탭으로 즉시 열림
+    // [패치] 카운터 패턴으로 자식 요소 dragenter/dragleave 버블링에 의한 잔상 방지
     const contentArea = document.getElementById('content-area');
-    // 브라우저 기본 파일 열기 동작(새 페이지 이동) 방지
-    document.addEventListener('dragover', (e) => {
+    let dragCounter = 0;
+    document.addEventListener('dragenter', (e) => {
         e.preventDefault();
+        dragCounter++;
         if (e.dataTransfer.types.includes('Files')) {
             contentArea.classList.add('file-drop-active');
         }
     });
     document.addEventListener('dragleave', (e) => {
-        // 브라우저 영역 밖으로 나가면 오버레이 제거
-        if (e.relatedTarget === null || !document.body.contains(e.relatedTarget)) {
+        dragCounter--;
+        if (dragCounter === 0) {
             contentArea.classList.remove('file-drop-active');
         }
     });
+    // dragover는 브라우저 기본 동작 방지 전용
+    document.addEventListener('dragover', (e) => e.preventDefault());
     document.addEventListener('drop', (e) => {
         e.preventDefault();
+        dragCounter = 0; // 드롭 시 카운터 리셋
         contentArea.classList.remove('file-drop-active');
         const files = e.dataTransfer.files;
         if (!files || files.length === 0) return;
 
         // 드롭된 파일들을 순회하며 텍스트 파일만 새 탭으로 열기
         Array.from(files).forEach(file => {
-            // 텍스트 기반 파일인지 확인 (MIME 또는 확장자로 판별)
             const textExtensions = ['txt', 'md', 'markdown', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'htm', 'xml', 'json', 'py', 'java', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sh', 'bat', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'log', 'csv', 'sql', 'svg'];
             const ext = file.name.split('.').pop().toLowerCase();
             const isText = file.type.startsWith('text/') || textExtensions.includes(ext);
