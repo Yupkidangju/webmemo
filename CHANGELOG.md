@@ -2,6 +2,10 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v2.4.0] - 2026-02-21
+### Added (추가됨)
+- **[신규] Word Wrap(자동 줄바꿈) 토글 스위치**: 상단 툴바에 iOS/Android 스타일 슬라이딩 토글 스위치를 배치하여, 에디터의 자동 줄바꿈을 실시간으로 ON/OFF 전환 가능. CM6 `Compartment.reconfigure()` 패턴으로 에디터 재생성 없이 즉시 적용. 설정값은 IndexedDB에 저장되어 재실행 시 마지막 상태 유지. 5개국어(한/영/일/중번/중간) 레이블 지원.
+
 ## [v2.3.0] - 2026-02-21
 ### Added (추가됨)
 - **[신규] 미니맵(Scroll Miniview) 탑재**: `@replit/codemirror-minimap` 확장을 ESM 동적 로딩(`esm.sh`)으로 통합하여, 에디터 우측에 VS Code 스타일의 축소 코드 미니뷰를 표시. 블록 모드(`displayText: 'blocks'`)로 코드 구조를 추상화하여 표현하며, 반투명 뷰포트 오버레이(`showOverlay: 'always'`)로 현재 보이는 영역을 실시간 표시. 5종 테마 모두에서 배경색과 오버레이 색상이 자동으로 조화되며, 마우스 호버 시 선명도가 향상되는 미세 인터랙션 적용.

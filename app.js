@@ -13,6 +13,8 @@ let languageConf;
 let readOnlyConf;
 let themeConf;
 let fontConf;
+// [v2.4.0] Word Wrap(자동 줄바꿈) 동적 토글용 Compartment
+let wrapConf;
 
 async function loadCM6() {
     const state = await import("https://esm.sh/@codemirror/state");
@@ -45,6 +47,8 @@ async function loadCM6() {
     readOnlyConf = new Compartment();
     themeConf = new Compartment();
     fontConf = new Compartment();
+    // [v2.4.0] Word Wrap Compartment: 런타임에 EditorView.lineWrapping을 동적 on/off
+    wrapConf = new Compartment();
 }
 
 // ==========================================
@@ -71,7 +75,8 @@ let appData = {
     theme: 'white',
     markdownMode: false,
     fontSize: 14,
-    uiLang: detectInitialLanguage() // Auto-detect UI Language
+    uiLang: detectInitialLanguage(), // Auto-detect UI Language
+    wordWrap: false // [v2.4.0] Word Wrap 상태 (기본: OFF, 코딩 시 줄바꿈 없음)
 };
 
 // ==========================================
@@ -119,7 +124,8 @@ const i18nDict = {
         'confirm-msg': '저장하지 않은 변경사항이 있습니다.<br>저장하시겠습니까?',
         'btn-confirm-save': '저장',
         'btn-confirm-discard': '저장 안함',
-        'btn-confirm-cancel': '닫기 취소'
+        'btn-confirm-cancel': '닫기 취소',
+        'label-wordwrap': '줄바꿈'
     },
     'en': {
         'btn-new': 'New File (Ctrl+N)',
@@ -162,7 +168,8 @@ const i18nDict = {
         'confirm-msg': 'You have unsaved changes.<br>Do you want to save?',
         'btn-confirm-save': 'Save',
         'btn-confirm-discard': 'Discard',
-        'btn-confirm-cancel': 'Cancel'
+        'btn-confirm-cancel': 'Cancel',
+        'label-wordwrap': 'Wrap'
     },
     'ja': {
         'btn-new': '新規ファイル (Ctrl+N)',
@@ -205,7 +212,8 @@ const i18nDict = {
         'confirm-msg': '保存されていない変更があります。<br>保存しますか？',
         'btn-confirm-save': '保存',
         'btn-confirm-discard': '破棄',
-        'btn-confirm-cancel': 'キャンセル'
+        'btn-confirm-cancel': 'キャンセル',
+        'label-wordwrap': '折返し'
     },
     'zh-TW': {
         'btn-new': '新檔案 (Ctrl+N)',
@@ -248,7 +256,8 @@ const i18nDict = {
         'confirm-msg': '您有未儲存的變更。<br>是否要儲存？',
         'btn-confirm-save': '儲存',
         'btn-confirm-discard': '不儲存',
-        'btn-confirm-cancel': '取消'
+        'btn-confirm-cancel': '取消',
+        'label-wordwrap': '換行'
     },
     'zh-CN': {
         'btn-new': '新文件 (Ctrl+N)',
@@ -291,7 +300,8 @@ const i18nDict = {
         'confirm-msg': '您有未保存的更改。<br>是否要保存？',
         'btn-confirm-save': '保存',
         'btn-confirm-discard': '不保存',
-        'btn-confirm-cancel': '取消'
+        'btn-confirm-cancel': '取消',
+        'label-wordwrap': '换行'
     }
 };
 
@@ -389,6 +399,9 @@ function applyLanguage(langCode) {
     // Label override
     const mdLabel = document.getElementById('label-markdown');
     if (mdLabel) mdLabel.textContent = "Markdown";
+    // [v2.4.0] Word Wrap 토글 레이블 다국어 적용
+    const wrapLabel = document.getElementById('label-wordwrap');
+    if (wrapLabel) wrapLabel.textContent = dict['label-wordwrap'] || 'Wrap';
 
     // Update active dropdown
     const uiLangSelect = document.getElementById('ui-lang-select');
@@ -480,6 +493,9 @@ function initCodeMirror() {
                 readOnlyConf.of(EditorState.readOnly.of(false)),
                 themeConf.of([]),
                 fontConf.of([]),
+                // [v2.4.0] Word Wrap Compartment: 사용자 설정에 따라 자동 줄바꿈 적용
+                // ON 시 EditorView.lineWrapping으로 텍스트가 에디터 경계에서 줄바꿈
+                wrapConf.of(appData.wordWrap ? EditorView.lineWrapping : []),
                 EditorState.allowMultipleSelections.of(true),
                 // [v2.3.0] 미니맵(스크롤 미니뷰) 확장 등록
                 // displayText: 'blocks' → 코드를 추상적 블록으로 축소 표현 (가독성 및 성능 최적화)
@@ -973,6 +989,25 @@ function setupEventListeners() {
         // cm.refresh() not needed in CM6;
     });
 
+    // [v2.4.0] Word Wrap 슬라이딩 토글 스위치 이벤트 핸들러
+    // 체크박스 상태 변경 시 Compartment의 reconfigure로 즉시 적용 (에디터 재생성 없음)
+    const toggleWordwrap = document.getElementById('toggle-wordwrap');
+    if (toggleWordwrap) {
+        toggleWordwrap.addEventListener('change', (e) => {
+            appData.wordWrap = e.target.checked;
+            // Compartment reconfigure로 런타임 동적 줄바꿈 토글
+            cm.dispatch({
+                effects: wrapConf.reconfigure(
+                    appData.wordWrap ? EditorView.lineWrapping : []
+                )
+            });
+            saveToStorage();
+            const statusMsg = appData.wordWrap
+                ? (i18nDict[appData.uiLang]['label-wordwrap'] || 'Wrap') + ' ON'
+                : (i18nDict[appData.uiLang]['label-wordwrap'] || 'Wrap') + ' OFF';
+            showStatus(statusMsg);
+        });
+    }
     // Toolbar Basic Action
     document.getElementById('btn-new').addEventListener('click', () => addTab());
     document.getElementById('btn-save').addEventListener('click', () => handleSaveFile(false));
@@ -1305,6 +1340,13 @@ async function initApp() {
     if (appData.markdownMode) {
         btnMarkdown.classList.add('active');
         preview.classList.remove('hidden');
+    }
+
+    // [v2.4.0] 저장된 Word Wrap 설정 복원
+    // IndexedDB에서 불러온 appData.wordWrap 값으로 토글 스위치 UI를 동기화
+    const toggleWordwrap = document.getElementById('toggle-wordwrap');
+    if (toggleWordwrap && appData.wordWrap) {
+        toggleWordwrap.checked = true;
     }
 
     renderTabs();

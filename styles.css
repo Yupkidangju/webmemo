@@ -191,6 +191,96 @@ body.zen-mode .content-area {
     margin: 0 4px;
 }
 
+/* ==========================================
+ * [v2.4.0] Feature: Word Wrap 슬라이딩 토글 스위치
+ * iOS/Android 스타일의 좌우 슬라이드 전환 스위치
+ * ========================================== */
+
+/* 토글 스위치 컨테이너: 레이블과 스위치를 수평 배치 */
+.wrap-toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+/* 토글 레이블 텍스트 */
+.wrap-toggle-label {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    user-select: none;
+    transition: color 0.2s;
+}
+
+/* 토글 활성 시 레이블 강조 */
+.wrap-toggle-container:has(input:checked) .wrap-toggle-label {
+    color: var(--accent);
+}
+
+/* 토글 스위치 본체 (트랙) */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* 실제 체크박스는 숨김 */
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* 슬라이더 트랙 (OFF 상태) */
+.toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border-color);
+    border-radius: 20px;
+    transition: background-color 0.25s ease;
+}
+
+/* 슬라이더 원형 핀 (OFF 위치: 좌측) */
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    transition: transform 0.25s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ON 상태: 트랙 색상을 accent 컬러로 변환 */
+.toggle-switch input:checked+.toggle-slider {
+    background-color: var(--accent);
+}
+
+/* ON 상태: 핀을 우측으로 슬라이드 (36px - 14px - 3px*2 = 16px) */
+.toggle-switch input:checked+.toggle-slider::before {
+    transform: translateX(16px);
+}
+
+/* 호버 시 시각적 피드백 */
+.toggle-switch:hover .toggle-slider {
+    background-color: var(--text-muted);
+}
+
+.toggle-switch:hover input:checked+.toggle-slider {
+    filter: brightness(1.15);
+}
+
 .theme-selector select {
     background: transparent;
     color: var(--text-main);
