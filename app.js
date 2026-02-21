@@ -336,25 +336,51 @@ let emergencyTriggered = false; // 비상 백업 스팸 방지 플래그
 
 async function saveToStorage() {
     // FileHandle 객체는 IndexedDB의 structured clone으로 완벽하게 직렬화됨
-    // null 처리 시 새로고침마다 파일 연결 상태가 초기화되는 UX 퇴행 발생 (2차 감사에서 발견)
     const dataToSave = { ...appData };
     try {
         await localforage.setItem(STORAGE_KEY, dataToSave);
         // [4차 감사 4] 저장 성공 시 비상 백업 플래그 초기화
-        // 인용량 확보 후 저장이 재개되면, 다음 용량 초과 시 비상 백업이 다시 동작하도록 플래그 리셋
         emergencyTriggered = false;
+
+        // [v2.7.0] 로컬 타임머신: 탭별 최근 10개 스냅샷 자동 저장
+        // 내용이 변경된 탭만 스냅샷 추가 (저장소 효율 유지)
+        try {
+            const snapshots = (await localforage.getItem('webmemo_snapshots')) || {};
+            appData.tabs.forEach(tab => {
+                if (!snapshots[tab.id]) snapshots[tab.id] = [];
+                const history = snapshots[tab.id];
+                const lastSnap = history.length > 0 ? history[history.length - 1] : null;
+                // 마지막 스냅샷과 내용이 다를 때만 추가
+                if (!lastSnap || lastSnap.content !== tab.content) {
+                    history.push({
+                        content: tab.content,
+                        title: tab.title,
+                        timestamp: new Date().toISOString()
+                    });
+                    // 최대 10개 유지 (FIFO)
+                    if (history.length > 10) history.shift();
+                }
+            });
+            // 삭제된 탭의 스냅샷 정리
+            const activeIds = new Set(appData.tabs.map(t => t.id));
+            Object.keys(snapshots).forEach(id => {
+                if (!activeIds.has(id)) delete snapshots[id];
+            });
+            await localforage.setItem('webmemo_snapshots', snapshots);
+        } catch (snapErr) {
+            console.warn('Snapshot save failed (non-critical)', snapErr);
+        }
+
         const savedMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-saved'] : '저장됨';
         showStatus(savedMsg);
     } catch (err) {
         console.error('Save to IndexedDB failed', err);
         const errMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-error'] : '저장 오류';
         // [2차 감사 1] 비상 백업 세션당 1회만 실행
-        // 저장소 용량 초과 시 2초마다 자동저장 트리거로 무한 다운로드 스팸 방지
         if (!emergencyTriggered) {
             emergencyTriggered = true;
             showStatus(errMsg + ' - 비상 백업 1회 다운로드');
             try {
-                // 비상 백업용 데이터에서는 handle을 제외 (JSON 직렬화 불가)
                 const backupData = { ...appData, tabs: appData.tabs.map(t => ({ ...t, handle: null })) };
                 const emergencyData = JSON.stringify(backupData, null, 2);
                 const blob = new Blob([emergencyData], { type: 'application/json' });
@@ -859,14 +885,52 @@ function updateActiveTabContent() {
 // [5차 감사 3] 마크다운 프리뷰 갱신 함수
 // DOMPurify 훅은 initApp()에서 1회만 등록 (메모리 누수 방지)
 function updateMarkdownPreview() {
+    const tocEl = document.getElementById('md-toc');
     if (appData.markdownMode) {
         const docText = cm.state.doc.toString() || '';
         // 대용량 문서(100KB 초과) 프리뷰 보호
         if (docText.length > 100000) {
             preview.textContent = '⚠️ 문서가 너무 큽니다 (100KB 초과). 마크다운 프리뷰가 비활성화되었습니다.';
+            if (tocEl) tocEl.classList.add('hidden');
             return;
         }
         preview.innerHTML = DOMPurify.sanitize(marked.parse(docText));
+
+        // [v2.7.0] Floating TOC 동적 생성
+        // 프리뷰 DOM에서 h1~h6 헤딩을 추출하여 목차 리스트 구성
+        if (tocEl) {
+            const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            if (headings.length > 0) {
+                tocEl.classList.remove('hidden');
+                tocEl.innerHTML = '<div class="md-toc-title">📑 목차</div>';
+                headings.forEach((h, idx) => {
+                    const level = parseInt(h.tagName[1]); // 1~6
+                    const item = document.createElement('div');
+                    item.className = 'md-toc-item md-toc-h' + level;
+                    item.textContent = h.textContent;
+                    item.title = h.textContent;
+                    // 클릭 시 프리뷰에서 해당 헤딩으로 스크롤
+                    item.addEventListener('click', () => {
+                        h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        // 에디터에서도 해당 라인으로 커서 이동
+                        const lines = docText.split('\n');
+                        const headingText = h.textContent.trim();
+                        for (let i = 0; i < lines.length; i++) {
+                            if (lines[i].replace(/^#+\s*/, '').trim() === headingText) {
+                                const pos = cm.state.doc.line(i + 1).from;
+                                cm.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
+                                break;
+                            }
+                        }
+                    });
+                    tocEl.appendChild(item);
+                });
+            } else {
+                tocEl.classList.add('hidden');
+            }
+        }
+    } else {
+        if (tocEl) tocEl.classList.add('hidden');
     }
 }
 
@@ -1318,6 +1382,48 @@ function setupEventListeners() {
             preview.classList.add('hidden');
             preview.textContent = '';
         }
+    });
+
+    // [v2.7.0] 파일 드래그&드롭 오픈 (File DropZone)
+    // 탐색기/바탕화면에서 파일을 브라우저 영역에 드롭하면 새 탭으로 즉시 열림
+    const contentArea = document.getElementById('content-area');
+    // 브라우저 기본 파일 열기 동작(새 페이지 이동) 방지
+    document.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.types.includes('Files')) {
+            contentArea.classList.add('file-drop-active');
+        }
+    });
+    document.addEventListener('dragleave', (e) => {
+        // 브라우저 영역 밖으로 나가면 오버레이 제거
+        if (e.relatedTarget === null || !document.body.contains(e.relatedTarget)) {
+            contentArea.classList.remove('file-drop-active');
+        }
+    });
+    document.addEventListener('drop', (e) => {
+        e.preventDefault();
+        contentArea.classList.remove('file-drop-active');
+        const files = e.dataTransfer.files;
+        if (!files || files.length === 0) return;
+
+        // 드롭된 파일들을 순회하며 텍스트 파일만 새 탭으로 열기
+        Array.from(files).forEach(file => {
+            // 텍스트 기반 파일인지 확인 (MIME 또는 확장자로 판별)
+            const textExtensions = ['txt', 'md', 'markdown', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'htm', 'xml', 'json', 'py', 'java', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sh', 'bat', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'log', 'csv', 'sql', 'svg'];
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isText = file.type.startsWith('text/') || textExtensions.includes(ext);
+            if (!isText) {
+                showStatus(`⚠️ ${file.name}: 텍스트 파일만 열 수 있습니다.`);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                addTab(file.name, ev.target.result, 'text/plain');
+                autoDetectSyntax(file.name);
+                showStatus(`📂 ${file.name} 열림`);
+            };
+            reader.readAsText(file);
+        });
     });
 
     // Confirm Modal Events

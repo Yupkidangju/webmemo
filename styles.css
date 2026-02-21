@@ -438,6 +438,25 @@ body.zen-mode .content-area {
     position: relative;
 }
 
+/* [v2.7.0] 파일 드래그&드롭 시각적 피드백 */
+.content-area.file-drop-active::after {
+    content: '📂 파일을 여기에 놓으세요';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 120, 212, 0.15);
+    border: 2px dashed var(--accent);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: 18px;
+    font-weight: 600;
+    z-index: 999;
+    pointer-events: none;
+}
+
 .editor-wrapper {
     flex: 1;
     display: flex;
@@ -579,6 +598,80 @@ body.zen-mode .content-area {
         background: #fff !important;
         color: #000 !important;
     }
+}
+
+/* [v2.7.0] 마크다운 Floating TOC (목차) */
+.md-toc {
+    width: 200px;
+    min-width: 200px;
+    height: 100%;
+    overflow-y: auto;
+    padding: 12px 8px;
+    border-left: 1px solid var(--border-color);
+    background-color: var(--bg-toolbar);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    scrollbar-width: thin;
+}
+
+.md-toc.hidden {
+    display: none;
+}
+
+.md-toc-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.md-toc-item {
+    padding: 3px 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.1s, color 0.1s;
+}
+
+.md-toc-item:hover {
+    background-color: var(--btn-hover);
+    color: var(--accent);
+}
+
+/* 헤딩 레벨별 들여쓰기 */
+.md-toc-h1 {
+    padding-left: 6px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.md-toc-h2 {
+    padding-left: 16px;
+    font-weight: 500;
+}
+
+.md-toc-h3 {
+    padding-left: 26px;
+}
+
+.md-toc-h4 {
+    padding-left: 36px;
+    font-size: 11px;
+}
+
+.md-toc-h5 {
+    padding-left: 46px;
+    font-size: 11px;
+}
+
+.md-toc-h6 {
+    padding-left: 56px;
+    font-size: 11px;
 }
 
 /* Markdown Styles inside Preview */
