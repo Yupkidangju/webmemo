@@ -329,18 +329,38 @@ const btnReadonly = document.getElementById('btn-readonly');
 const fileInput = document.getElementById('file-input');
 const restoreInput = document.getElementById('restore-input');
 
-// Save to IndexedDB via localForage
+// [v2.5.0] IndexedDB 저장 함수 (보안 감사 반영)
+// FileHandle 직렬화 전처리 + 저장 실패 시 비상 JSON 다운로드 폴백 추가
 async function saveToStorage() {
-    const dataToSave = { ...appData };
-    // Keep handles intact for serialization into IndexedDB
+    // [감사 2-2] FileHandle 객체 명시적 직렬화 전처리
+    // FileHandle은 structured clone 가능하지만, 명시적으로 제외하여 안전성 확보
+    const dataToSave = {
+        ...appData,
+        tabs: appData.tabs.map(t => ({ ...t, handle: null }))
+    };
     try {
         await localforage.setItem(STORAGE_KEY, dataToSave);
         const savedMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-saved'] : '저장됨';
         showStatus(savedMsg);
     } catch (err) {
         console.error('Save to IndexedDB failed', err);
-        const errMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-error'] : '저장 오류 (용량 초과)';
-        showStatus(errMsg);
+        // [감사 2-1] 저장 실패 시 비상 JSON 다운로드 유도
+        // QuotaExceededError 등으로 IndexedDB 저장 불가 시 데이터 유실 방지
+        const errMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-error'] : '저장 오류';
+        showStatus(errMsg + ' - 비상 백업 다운로드 시도');
+        try {
+            const emergencyData = JSON.stringify(dataToSave, null, 2);
+            const blob = new Blob([emergencyData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `webmemo_emergency_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        } catch (backupErr) {
+            console.error('Emergency backup also failed', backupErr);
+        }
     }
 }
 
@@ -386,9 +406,17 @@ function applyLanguage(langCode) {
         statusMsg.textContent = dict['status-ready'];
     }
 
-    // Translation for confirm modal
+    // [감사 1-2] confirm modal innerHTML → textContent + DOM API로 변경
+    // 향후 i18n 딕셔너리에 사용자 입력이 혼입될 경우의 잠재적 XSS 벡터 원천 제거
     const cMsg = document.getElementById('confirm-msg');
-    if (cMsg) cMsg.innerHTML = dict['confirm-msg'];
+    if (cMsg) {
+        cMsg.textContent = '';
+        const parts = (dict['confirm-msg'] || '').split('<br>');
+        parts.forEach((part, i) => {
+            cMsg.appendChild(document.createTextNode(part));
+            if (i < parts.length - 1) cMsg.appendChild(document.createElement('br'));
+        });
+    }
     const cSave = document.getElementById('btn-confirm-save');
     if (cSave) cSave.textContent = dict['btn-confirm-save'];
     const cDiscard = document.getElementById('btn-confirm-discard');
@@ -750,7 +778,14 @@ function updateActiveTabContent() {
 // DOMPurify를 통한 XSS 방어는 그대로 유지.
 function updateMarkdownPreview() {
     if (appData.markdownMode) {
-        preview.innerHTML = DOMPurify.sanitize(marked.parse(cm.state.doc.toString() || ''));
+        const docText = cm.state.doc.toString() || '';
+        // [감사 4-2] 대용량 문서(100KB 초과) 프리뷰 보호
+        // marked.parse()가 동기적으로 UI 스레드를 블로킹하여 프리징을 유발하는 것을 방지
+        if (docText.length > 100000) {
+            preview.textContent = '⚠️ 문서가 너무 큽니다 (100KB 초과). 마크다운 프리뷰가 비활성화되었습니다.';
+            return;
+        }
+        preview.innerHTML = DOMPurify.sanitize(marked.parse(docText));
     }
 }
 
@@ -812,12 +847,18 @@ async function handleSaveFile(saveAs = false) {
     const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
     if (!activeTab) return;
 
+    // [감사 3] 수동 저장 시 자동 저장 디바운스 타이머 선행 클리어
+    // 자동 저장 타이머가 만료되는 시점과 수동 저장이 동시 실행되는 경쟁 조건(Race Condition) 방지
+    clearTimeout(window.saveTimer);
+
     try {
         let suggestedName = activeTab.title;
         if (suggestedName.includes('무제') || suggestedName.includes('새 문서')) {
             const newName = prompt('파일 이름을 지정해주세요 (미리 구문 색상이 적용됩니다):', "untitled.txt");
             if (newName && newName.trim() !== '') {
-                suggestedName = newName.trim();
+                // [감사 4-1] OS 파일명 금지 특수문자 자동 치환
+                // \ / : * ? " < > | 를 언더스코어로 대체하여 AbortError 방지
+                suggestedName = newName.trim().replace(/[\\/:*?"<>|]/g, '_');
                 activeTab.title = suggestedName;
                 renderTabs();
                 autoDetectSyntax(suggestedName);

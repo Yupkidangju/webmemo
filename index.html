@@ -12,12 +12,19 @@
 
     <!-- Marked.js (for Markdown rendering) -->
     <!-- [v2.2.0] marked.js 버전을 15.0.6으로 고정하여 CDN 자동 업데이트로 인한 렌더링 변동 방지 -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.6/marked.min.js"></script>
+    <!-- [v2.5.0] SRI(Subresource Integrity) 해시 추가로 CDN 침해 시 변조 스크립트 실행 차단 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.6/marked.min.js"
+        integrity="sha384-b5hg04N6F0rvyz1a/GVoPPY0JcqGTARCmEuFCqwQKX3zq7LsxhV+n+6Ykh2pQOCH"
+        crossorigin="anonymous"></script>
     <!-- DOMPurify (for Markdown XSS Protection) -->
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"
+        integrity="sha384-vdScihEZCfbPnBQf+lc7LgXUdJVYyhC3yWHUW5C5P5GpHRqVnaM6HJELJxT6IqwM"
+        crossorigin="anonymous"></script>
 
     <!-- localForage (IndexedDB Wrapper for large capacity) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"
+        integrity="sha384-MTDrIlFOzEqpmOxY6UIA/1Zkh0a64UlmJ6R0UrZXqXCPx99siPGi8EmtQjIeCcTH"
+        crossorigin="anonymous"></script>
 
     <!-- Google Fonts for UI & Editor -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,8 +33,8 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
 
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Phosphor Icons (버전 2.1.1 고정) -->
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 </head>
 
 <body data-theme="white">

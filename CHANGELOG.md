@@ -2,6 +2,19 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v2.5.0] - 2026-02-21
+### Security (보안)
+- **CDN Subresource Integrity(SRI) 적용**: `marked.js`, `DOMPurify`, `localForage` 3종 CDN 스크립트에 SHA-384 해시(`integrity` 속성) 추가. CDN 침해 시 변조된 스크립트 실행 원천 차단.
+- **Phosphor Icons CDN 버전 고정**: `@phosphor-icons/web@2.1.1`로 버전 고정하여 자동 업데이트 방지.
+- **innerHTML XSS 벡터 제거**: 확인 모달의 `innerHTML` 대입을 `textContent` + DOM API(`createElement('br')`)로 교체하여 잠재적 XSS 벡터 원천 제거.
+
+### Fixed (수정됨)
+- **IndexedDB 저장 실패 시 비상 복구**: `saveToStorage()` 실패 시 자동으로 비상 JSON 백업 파일을 다운로드 유도하여 데이터 유실 방지.
+- **FileHandle 직렬화 안전성 강화**: `saveToStorage()` 호출 시 FileHandle 객체를 명시적으로 `null`로 전처리하여 직렬화 정합성 확보.
+- **자동/수동 저장 경쟁 조건 해결**: `handleSaveFile()` 시작 시 `clearTimeout(window.saveTimer)` 선행 호출로 동시 I/O 충돌 방지.
+- **파일명 특수문자 자동 치환**: 파일 저장 시 OS 금지 특수문자(`\ / : * ? " < > |`)를 자동으로 `_`로 대체하여 `AbortError` 방지.
+- **대용량 문서 프리뷰 보호**: 100KB 초과 문서에서 마크다운 프리뷰 자동 비활성화하여 UI 프리징 방지.
+
 ## [v2.4.0] - 2026-02-21
 ### Added (추가됨)
 - **[신규] Word Wrap(자동 줄바꿈) 토글 스위치**: 상단 툴바에 iOS/Android 스타일 슬라이딩 토글 스위치를 배치하여, 에디터의 자동 줄바꿈을 실시간으로 ON/OFF 전환 가능. CM6 `Compartment.reconfigure()` 패턴으로 에디터 재생성 없이 즉시 적용. 설정값은 IndexedDB에 저장되어 재실행 시 마지막 상태 유지. 5개국어(한/영/일/중번/중간) 레이블 지원.
