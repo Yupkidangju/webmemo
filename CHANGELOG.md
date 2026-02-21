@@ -2,6 +2,16 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v2.5.4] - 2026-02-21
+### Fixed (수정됨) - 5차 최종 감사 (아키텍처/상태관리)
+- **Undo/Redo 역사 출혈(History Bleed) 수정**: `loadActiveTabContent()`에서 `cm.dispatch()` 대신 `cm.setState()`로 EditorState를 완전 재생성. 탭 전환 시 History 스택이 초기화되어 탭간 Undo/Redo 데이터 혼선 원천 차단.
+- **검색 인덱스 Out of Bounds 크래시 방지**: 탭 전환 시 `window.searchAllMatches`와 `window.searchLastQuery`를 명시적으로 초기화. 짧은 문서로 전환 후 이전 좌표로 셀렉션 이동 시 RangeError 방지.
+- **DOMPurify 훅 메모리 누수 해결**: `updateMarkdownPreview()`마다 `addHook`/`removeHook`하던 패턴을 `initApp()`에서 1회 등록으로 변경. 키 입력마다 훅을 붙였다 떼는 성능 낭비와 에러 시 누수 위험 제거.
+- **`getEditorExtensions()` 함수 분리**: `initCodeMirror()`와 `loadActiveTabContent()`에서 공유하는 확장팩 배열 생성 로직을 독립 함수로 추출. 코드 중복 제거 및 유지보수성 향상.
+
+### Improved (개선됨)
+- **새 탭 제목 i18n 연동**: `addTab()` 및 `renderTabs()`의 기본 타이틀을 5개국어 딕셔너리에 연동. 한국어 '새 문서' 고정 → 언어 설정에 따라 Untitled/新規/新檔案/新文件 자동 적용.
+
 ## [v2.5.3] - 2026-02-21
 ### Fixed (수정됨) - 4차 감사
 - **다중 페이지 인쇄 1페이지 잘림 해결**: `@media print`에서 `html, body, .app-container, .content-area`의 `height: auto`, `overflow: visible` 강제 적용. SPA 전형적 인쇄 버그 수정.

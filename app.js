@@ -505,83 +505,82 @@ async function autoDetectSyntax(filename) {
     }
 }
 
-// [v2.3.0] CodeMirror 6 초기화 함수 - 미니맵 확장 통합
-// Replit의 codemirror-minimap 패키지를 extensions에 포함하여
-// 에디터 우측에 VS Code 스타일의 축소 코드 미니뷰를 렌더링함
-function initCodeMirror() {
-    // 미니맵 인스턴스 생성 팩토리: 미니맵 컨테이너 DOM 요소를 반환
+// [5차 감사 1] 에디터 확장 배열 생성 함수 분리
+// initCodeMirror와 loadActiveTabContent(탭 전환 시 setState)에서 공유 사용
+// 탭 전환 시 EditorState를 새로 생성하여 History 스택을 초기화하고
+// Undo/Redo 역사 출혈(History Bleed) 방지
+function getEditorExtensions() {
+    // 미니맵 인스턴스 생성 팩토리
     const createMinimap = (v) => {
         const dom = document.createElement('div');
         return { dom };
     };
 
+    return [
+        lineNumbers(),
+        highlightActiveLineGutter(),
+        drawSelection(),
+        history(),
+        bracketMatching(),
+        closeBrackets(),
+        keymap.of([indentWithTab, ...historyKeymap, ...defaultKeymap]),
+        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        languageConf.of([]),
+        readOnlyConf.of(EditorState.readOnly.of(false)),
+        themeConf.of([]),
+        fontConf.of([]),
+        wrapConf.of(appData.wordWrap ? EditorView.lineWrapping : []),
+        EditorState.allowMultipleSelections.of(true),
+        showMinimap.compute(['doc'], (state) => ({
+            create: createMinimap,
+            displayText: 'blocks',
+            showOverlay: 'always',
+        })),
+        EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+                window.searchLastQuery = null;
+                window.searchAllMatches = [];
+
+                const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
+                if (activeTab && activeTab.content !== cm.state.doc.toString()) {
+                    activeTab.content = cm.state.doc.toString();
+                    updateMarkdownPreview();
+                    updateStats();
+                    const ui = document.querySelector(`.tab[data-id="${activeTab.id}"] .tab-title`);
+                    if (ui) ui.classList.add('modified');
+                    activeTab.isModified = true;
+                    showStatus(i18nDict[appData.uiLang]['status-saving'] || '작성중...');
+                    clearTimeout(window.saveTimer);
+                    window.saveTimer = setTimeout(() => { saveToStorage(); }, 2000);
+                }
+            }
+            if (update.selectionSet || update.docChanged) {
+                const head = update.state.selection.main.head;
+                const line = update.state.doc.lineAt(head);
+                const strLine = i18nDict[appData.uiLang]['stats-line'] || 'Ln';
+                const strCol = i18nDict[appData.uiLang]['stats-col'] || 'Col';
+                cursorPosEl.textContent = `${strLine}: ${line.number} | ${strCol}: ${head - line.from + 1}`;
+            }
+        }),
+        EditorView.domEventHandlers({
+            scroll: (e, view) => {
+                if (!appData.markdownMode) return;
+                const scrollInfo = view.scrollDOM;
+                const scrollPercentage = scrollInfo.scrollTop / (scrollInfo.scrollHeight - scrollInfo.clientHeight);
+                if (!isNaN(scrollPercentage)) {
+                    preview.scrollTop = scrollPercentage * (preview.scrollHeight - preview.clientHeight);
+                }
+            }
+        })
+    ];
+}
+
+// CodeMirror 6 초기화 - getEditorExtensions() 활용
+function initCodeMirror() {
     cm = new EditorView({
         state: EditorState.create({
             doc: "",
-            extensions: [
-                lineNumbers(),
-                highlightActiveLineGutter(),
-                drawSelection(),
-                history(),
-                bracketMatching(),
-                closeBrackets(),
-                keymap.of([indentWithTab, ...historyKeymap, ...defaultKeymap]),
-                syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-                languageConf.of([]),
-                readOnlyConf.of(EditorState.readOnly.of(false)),
-                themeConf.of([]),
-                fontConf.of([]),
-                // [v2.4.0] Word Wrap Compartment: 사용자 설정에 따라 자동 줄바꿈 적용
-                // ON 시 EditorView.lineWrapping으로 텍스트가 에디터 경계에서 줄바꿈
-                wrapConf.of(appData.wordWrap ? EditorView.lineWrapping : []),
-                EditorState.allowMultipleSelections.of(true),
-                // [v2.3.0] 미니맵(스크롤 미니뷰) 확장 등록
-                // displayText: 'blocks' → 코드를 추상적 블록으로 축소 표현 (가독성 및 성능 최적화)
-                // showOverlay: 'always' → 현재 뷰포트 위치를 반투명 사각형으로 항상 표시
-                showMinimap.compute(['doc'], (state) => {
-                    return {
-                        create: createMinimap,
-                        displayText: 'blocks',
-                        showOverlay: 'always',
-                    };
-                }),
-                EditorView.updateListener.of((update) => {
-                    if (update.docChanged) {
-                        window.searchLastQuery = null;
-                        window.searchAllMatches = [];
-
-                        const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
-                        if (activeTab && activeTab.content !== cm.state.doc.toString()) {
-                            activeTab.content = cm.state.doc.toString();
-                            updateMarkdownPreview();
-                            updateStats();
-                            const ui = document.querySelector(`.tab[data-id="${activeTab.id}"] .tab-title`);
-                            if (ui) ui.classList.add('modified');
-                            activeTab.isModified = true;
-                            showStatus(i18nDict[appData.uiLang]['status-saving'] || '작성중...');
-                            clearTimeout(window.saveTimer);
-                            window.saveTimer = setTimeout(() => { saveToStorage(); }, 2000);
-                        }
-                    }
-                    if (update.selectionSet || update.docChanged) {
-                        const head = update.state.selection.main.head;
-                        const line = update.state.doc.lineAt(head);
-                        const strLine = i18nDict[appData.uiLang]['stats-line'] || 'Ln';
-                        const strCol = i18nDict[appData.uiLang]['stats-col'] || 'Col';
-                        cursorPosEl.textContent = `${strLine}: ${line.number} | ${strCol}: ${head - line.from + 1}`;
-                    }
-                }),
-                EditorView.domEventHandlers({
-                    scroll: (e, view) => {
-                        if (!appData.markdownMode) return;
-                        const scrollInfo = view.scrollDOM;
-                        const scrollPercentage = scrollInfo.scrollTop / (scrollInfo.scrollHeight - scrollInfo.clientHeight);
-                        if (!isNaN(scrollPercentage)) {
-                            preview.scrollTop = scrollPercentage * (preview.scrollHeight - preview.clientHeight);
-                        }
-                    }
-                })
-            ]
+            extensions: getEditorExtensions()
         }),
         parent: document.querySelector('.editor-wrapper')
     });
@@ -626,7 +625,7 @@ function renderTabs() {
         tabEl.className = 'tab' + (tab.id === appData.activeTabId ? ' active' : '');
         tabEl.dataset.id = tab.id;
 
-        let displayTitle = tab.title || '무제 ' + (index + 1);
+        let displayTitle = tab.title || (newTabTitles[appData.uiLang] || 'Untitled') + ' ' + (index + 1);
 
         // [3차 감사 1] DOM-XSS 방지: innerHTML에 displayTitle을 직접 보간하지 않음
         // 악의적 파일명(예: <img onerror=alert(1)>.txt)이나 백업 JSON 변조를 통한
@@ -720,10 +719,15 @@ function closeTab(id) {
     showStatus('탭 닫힘');
 }
 
-function addTab(title = '새 문서', content = '', lang = 'text/plain', handle = null) {
+// [5차 감사 4] 새 탭 제목 i18n 연동
+// 외국어 사용자가 새 탭을 열 때 한국어 '새 문서'로 고정되는 문제 해결
+const newTabTitles = { 'ko': '새 문서', 'en': 'Untitled', 'ja': '新規', 'zh-TW': '新檔案', 'zh-CN': '新文件' };
+
+function addTab(title = null, content = '', lang = 'text/plain', handle = null) {
+    const defaultTitle = title || (newTabTitles[appData.uiLang] || 'Untitled');
     const newTab = {
         id: 'tab_' + Date.now(),
-        title: title,
+        title: defaultTitle,
         content: content,
         lang: lang,
         readonly: false,
@@ -735,7 +739,7 @@ function addTab(title = '새 문서', content = '', lang = 'text/plain', handle 
     renderTabs();
     loadActiveTabContent();
     saveToStorage();
-    if (handle) autoDetectSyntax(title);
+    if (handle) autoDetectSyntax(title || defaultTitle);
     cm.focus();
 }
 
@@ -753,11 +757,22 @@ function undoCloseTab() {
     }
 }
 
-// Editor Functions
+// [5차 감사 1] loadActiveTabContent: cm.setState()로 EditorState 완전 재생성
+// dispatch로 텍스트만 교체하면 history 스택이 공유되어 탭간 Undo/Redo 혼선 발생
+// setState()로 새 EditorState를 만들면 history()가 초기화되어 역사 출혈 방지
 function loadActiveTabContent() {
+    // [5차 감사 2] 탭 전환 시 검색 캐시 초기화
+    // 이전 탭의 절대 좌표로 짧은 문서의 셀렉션을 이동하면 RangeError 발생
+    window.searchLastQuery = null;
+    window.searchAllMatches = [];
+
     const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
     if (activeTab) {
-        cm.dispatch({ changes: { from: 0, to: cm.state.doc.length, insert: activeTab.content || '' } });
+        // cm.setState()로 완전히 새로운 State 생성 (History 스택 초기화)
+        cm.setState(EditorState.create({
+            doc: activeTab.content || '',
+            extensions: getEditorExtensions()
+        }));
 
         const lName = activeTab.lang || 'text/plain';
         const lgDesc = languages.find(l => l.name === lName || l.name.toLowerCase() === lName.toLowerCase() || (l.alias && l.alias.includes(lName.toLowerCase())));
@@ -770,6 +785,10 @@ function loadActiveTabContent() {
         langSelect.value = activeTab.lang || 'text/plain';
         if (activeTab.readonly) btnReadonly.classList.add('active');
         else btnReadonly.classList.remove('active');
+
+        // 현재 테마와 폰트 설정 재적용 (setState로 초기화되었으므로)
+        setTheme(appData.theme);
+        setFontSize(appData.fontSize);
     }
     updateMarkdownPreview();
     updateStats();
@@ -777,7 +796,6 @@ function loadActiveTabContent() {
     // Clear modification indicator
     const currentTabUI = document.querySelector(`.tab[data-id="${appData.activeTabId}"] .tab-title`);
     if (currentTabUI) currentTabUI.classList.remove('modified');
-    // setTimeout(() => // cm.refresh() not needed in CM6, 10);
 }
 
 function updateActiveTabContent() {
@@ -790,26 +808,17 @@ function updateActiveTabContent() {
     }
 }
 
-// [v2.5.1] 마크다운 프리뷰 갱신 함수 (2차 감사 반영)
-// DOMPurify 훅으로 target="_blank" 링크에 noopener noreferrer 자동 부여
+// [5차 감사 3] 마크다운 프리뷰 갱신 함수
+// DOMPurify 훅은 initApp()에서 1회만 등록 (메모리 누수 방지)
 function updateMarkdownPreview() {
     if (appData.markdownMode) {
         const docText = cm.state.doc.toString() || '';
-        // [감사 4-2] 대용량 문서(100KB 초과) 프리뷰 보호
+        // 대용량 문서(100KB 초과) 프리뷰 보호
         if (docText.length > 100000) {
             preview.textContent = '⚠️ 문서가 너무 큽니다 (100KB 초과). 마크다운 프리뷰가 비활성화되었습니다.';
             return;
         }
-        // [2차 감사 3] DOMPurify afterSanitizeAttributes 훅
-        // target="_blank" 링크에 rel="noopener noreferrer" 자동 부여하여
-        // window.opener 취약점을 통한 외부 페이지 조작 공격 방지
-        DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-            if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
-                node.setAttribute('rel', 'noopener noreferrer');
-            }
-        });
         preview.innerHTML = DOMPurify.sanitize(marked.parse(docText));
-        DOMPurify.removeHook('afterSanitizeAttributes');
     }
 }
 
@@ -1433,6 +1442,16 @@ async function initApp() {
     marked.setOptions({
         breaks: true,
         gfm: true
+    });
+
+    // [5차 감사 3] DOMPurify 보안 훅 1회 등록 (앱 생명주기 동안 자동 적용)
+    // target="_blank" 링크에 rel="noopener noreferrer" 자동 부여하여
+    // window.opener 취약점을 통한 외부 페이지 조작 공격 방지
+    // 이전: updateMarkdownPreview()마다 addHook/removeHook → 메모리 누수 위험
+    DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+        if (node.tagName === 'A' && node.getAttribute('target') === '_blank') {
+            node.setAttribute('rel', 'noopener noreferrer');
+        }
     });
 
     await loadFromStorage();
