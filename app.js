@@ -625,10 +625,15 @@ function renderTabs() {
 
         let displayTitle = tab.title || '무제 ' + (index + 1);
 
+        // [3차 감사 1] DOM-XSS 방지: innerHTML에 displayTitle을 직접 보간하지 않음
+        // 악의적 파일명(예: <img onerror=alert(1)>.txt)이나 백업 JSON 변조를 통한
+        // 스크립트 주입을 원천 차단. textContent로 안전하게 텍스트만 삽입
         tabEl.innerHTML = `
-            <span class="tab-title ${tab.readonly ? 'readonly' : ''} ${tab.isModified ? 'modified' : ''}" title="${displayTitle}">${displayTitle}</span>
+            <span class="tab-title ${tab.readonly ? 'readonly' : ''} ${tab.isModified ? 'modified' : ''}"></span>
             <button class="tab-close" data-id="${tab.id}"><i class="ph ph-x"></i></button>
         `;
+        tabEl.querySelector('.tab-title').textContent = displayTitle;
+        tabEl.querySelector('.tab-title').setAttribute('title', displayTitle);
 
         tabEl.addEventListener('click', (e) => {
             if (e.target.closest('.tab-close')) return;
@@ -1164,6 +1169,14 @@ function setupEventListeners() {
 
     // Keyboard Shortcuts Override
     document.addEventListener('keydown', (e) => {
+        // [3차 감사 3] ESC 키로 젠 모드 탈출
+        // 툴바가 사라진 상태에서 F11을 모르는 사용자가 갇히는 UX 함정 방지
+        if (e.key === 'Escape' && document.body.classList.contains('zen-mode')) {
+            document.body.classList.remove('zen-mode');
+            if (document.fullscreenElement) document.exitFullscreen();
+            showStatus('젠 모드 종료');
+            return;
+        }
         if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't') {
             e.preventDefault();
             undoCloseTab();
@@ -1186,6 +1199,35 @@ function setupEventListeners() {
 
     // Window Resize fixes CM layout
     window.addEventListener('resize', () => { /* cm.refresh() not needed in CM6 */ });
+
+    // [3차 감사 3] 브라우저 전체화면(ESC) 종료 시 젠 모드 클래스 동기화
+    // 브라우저 네이티브 ESC로 전체화면을 빠져나와도 zen-mode 클래스가 남는 문제 방지
+    document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement && document.body.classList.contains('zen-mode')) {
+            document.body.classList.remove('zen-mode');
+            showStatus('젠 모드 종료');
+        }
+    });
+
+    // [3차 감사 2] 일반 텍스트 모드 인쇄 지원
+    // CM6 가상 스크롤로 에디터 직접 인쇄 불가 → 인쇄 시 전체 텍스트를 프리뷰에 주입
+    window.addEventListener('beforeprint', () => {
+        if (!appData.markdownMode) {
+            preview.classList.remove('hidden');
+            // textContent 대신 pre 요소를 DOM으로 구성 (XSS 안전)
+            const pre = document.createElement('pre');
+            pre.style.cssText = 'white-space: pre-wrap; font-family: var(--font-mono); font-size: 12px; line-height: 1.5;';
+            pre.textContent = cm.state.doc.toString();
+            preview.textContent = '';
+            preview.appendChild(pre);
+        }
+    });
+    window.addEventListener('afterprint', () => {
+        if (!appData.markdownMode) {
+            preview.classList.add('hidden');
+            preview.textContent = '';
+        }
+    });
 
     // Confirm Modal Events
     document.getElementById('btn-confirm-save').addEventListener('click', async () => {
