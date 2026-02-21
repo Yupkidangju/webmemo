@@ -340,6 +340,9 @@ async function saveToStorage() {
     const dataToSave = { ...appData };
     try {
         await localforage.setItem(STORAGE_KEY, dataToSave);
+        // [4차 감사 4] 저장 성공 시 비상 백업 플래그 초기화
+        // 인용량 확보 후 저장이 재개되면, 다음 용량 초과 시 비상 백업이 다시 동작하도록 플래그 리셋
+        emergencyTriggered = false;
         const savedMsg = i18nDict[appData.uiLang] ? i18nDict[appData.uiLang]['status-saved'] : '저장됨';
         showStatus(savedMsg);
     } catch (err) {
@@ -679,6 +682,10 @@ function switchTab(id) {
 let pendingCloseTabId = null;
 
 function requestCloseTab(id) {
+    // [4차 감사 3] 확인 모달 논블로킹 레이스 컨디션 방지
+    // 모달이 이미 떠 있을 때 다른 탭 닫기 요청이 들어오면 pendingCloseTabId가 덮어씌워지는 문제 방지
+    if (!document.getElementById('confirm-modal').classList.contains('hidden')) return;
+
     const tab = appData.tabs.find(t => t.id === id);
     if (!tab) return;
 
@@ -1170,8 +1177,15 @@ function setupEventListeners() {
     // Keyboard Shortcuts Override
     document.addEventListener('keydown', (e) => {
         // [3차 감사 3] ESC 키로 젠 모드 탈출
-        // 툴바가 사라진 상태에서 F11을 모르는 사용자가 갇히는 UX 함정 방지
+        // [4차 감사 2] 검색/확인 모달이 열려있으면 젠 모드 종료 건너뛰기 (ESC 버블링 충돌 방지)
         if (e.key === 'Escape' && document.body.classList.contains('zen-mode')) {
+            const searchModal = document.getElementById('search-modal');
+            const confirmModal = document.getElementById('confirm-modal');
+            // 검색 모달이나 확인 모달이 열린 상태라면 젠 모드 탈출 억제 (모달만 닫히도록)
+            if ((searchModal && !searchModal.classList.contains('hidden')) ||
+                (confirmModal && !confirmModal.classList.contains('hidden'))) {
+                return;
+            }
             document.body.classList.remove('zen-mode');
             if (document.fullscreenElement) document.exitFullscreen();
             showStatus('젠 모드 종료');

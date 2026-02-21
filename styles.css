@@ -532,7 +532,19 @@ body.zen-mode .content-area {
 }
 
 /* Print Rules */
+/* [4차 감사 1] 다중 페이지 인쇄 지원: 최상위 컨테이너 높이 제한 해제 */
 @media print {
+
+    /* SPA 웹앱의 전형적 인쇄 버그 수정:
+       height: 100%와 overflow: hidden이 걸린 래퍼들이
+       프린트 스풀러에서 1페이지로 강제 크롭되는 문제 해결 */
+    html,
+    body,
+    .app-container,
+    .content-area {
+        height: auto !important;
+        overflow: visible !important;
+    }
 
     .toolbar,
     .tab-bar,

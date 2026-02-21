@@ -2,6 +2,13 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v2.5.3] - 2026-02-21
+### Fixed (수정됨) - 4차 감사
+- **다중 페이지 인쇄 1페이지 잘림 해결**: `@media print`에서 `html, body, .app-container, .content-area`의 `height: auto`, `overflow: visible` 강제 적용. SPA 전형적 인쇄 버그 수정.
+- **ESC 키 이벤트 버블링 충돌 해결**: 젠 모드에서 검색/확인 모달이 열려있을 때 ESC를 누르면 모달만 닫히고 젠 모드는 유지되도록 예외 처리 추가.
+- **확인 모달 논블로킹 레이스 컨디션 방지**: 모달이 이미 떠 있을 때 다른 탭 닫기 요청을 무시하여 `pendingCloseTabId` 덮어쓰기 방지.
+- **비상 백업 플래그 미초기화 수정**: 저장 성공 시 `emergencyTriggered`를 `false`로 리셋하여, 용량 확보 후 재차 용량 초과 시 비상 백업이 다시 동작하도록 보장.
+
 ## [v2.5.2] - 2026-02-21
 ### Security (보안) - 3차 감사
 - **탭 이름 DOM-XSS 취약점 차단**: `renderTabs()`에서 `innerHTML` 직접 보간을 제거하고 `textContent`로 안전하게 삽입. 악의적 파일명이나 변조된 백업 JSON을 통한 스크립트 주입 원천 차단.
