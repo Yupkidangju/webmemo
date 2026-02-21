@@ -149,7 +149,30 @@ const i18nDict = {
         'btn-confirm-save': '저장',
         'btn-confirm-discard': '저장 안함',
         'btn-confirm-cancel': '닫기 취소',
-        'label-wordwrap': '줄바꿈'
+        'label-wordwrap': '줄바꿈',
+        'prompt-rename': '탭 이름 변경 (확장자 포함 시 구문 색상이 자동 감지됩니다):',
+        'msg-tab-renamed': '탭 이름 변경됨',
+        'msg-tab-reordered': '탭 순서 변경됨',
+        'msg-tab-closed': '탭 닫힘',
+        'msg-tab-restored': '닫은 탭 복구됨',
+        'msg-no-tab-restore': '복구할 탭이 없습니다',
+        'msg-file-opened': '파일 열기 성공',
+        'msg-file-saved': '저장 성공',
+        'msg-file-downloaded': '다운로드 저장 성공 (호환 모드)',
+        'msg-file-save-failed': '저장 실패 (권한 필요)',
+        'msg-backup-done': '워크스페이스 백업 완료',
+        'msg-backup-restored': '워크스페이스 복원됨',
+        'msg-backup-invalid': '유효하지 않은 백업 파일입니다',
+        'msg-clipboard-copied': '전체 클립보드 복사됨',
+        'msg-clipboard-denied': '클립보드 권한 거부됨',
+        'msg-readonly-locked': '🔒 읽기 전용 모드',
+        'msg-zen-toggle': '젠 모드 (F11)',
+        'msg-zen-exit': '젠 모드 종료',
+        'msg-vim-on': '⌨️ Vim 모드 켜짐 (ESC → 명령 모드)',
+        'msg-vim-off': '일반 모드',
+        'msg-text-only': '텍스트 파일만 열 수 있습니다',
+        'prompt-save-name': '파일 이름을 지정해주세요 (구문 색상이 자동 적용됩니다):',
+        'toc-title': '목차'
     },
     'en': {
         'btn-new': 'New File (Ctrl+N)',
@@ -193,7 +216,30 @@ const i18nDict = {
         'btn-confirm-save': 'Save',
         'btn-confirm-discard': 'Discard',
         'btn-confirm-cancel': 'Cancel',
-        'label-wordwrap': 'Wrap'
+        'label-wordwrap': 'Wrap',
+        'prompt-rename': 'Rename tab (include extension for auto syntax detection):',
+        'msg-tab-renamed': 'Tab renamed',
+        'msg-tab-reordered': 'Tab reordered',
+        'msg-tab-closed': 'Tab closed',
+        'msg-tab-restored': 'Closed tab restored',
+        'msg-no-tab-restore': 'No tab to restore',
+        'msg-file-opened': 'File opened',
+        'msg-file-saved': 'Saved successfully',
+        'msg-file-downloaded': 'Downloaded (compatibility mode)',
+        'msg-file-save-failed': 'Save failed (permission required)',
+        'msg-backup-done': 'Workspace backup complete',
+        'msg-backup-restored': 'Workspace restored',
+        'msg-backup-invalid': 'Invalid backup file',
+        'msg-clipboard-copied': 'All text copied to clipboard',
+        'msg-clipboard-denied': 'Clipboard permission denied',
+        'msg-readonly-locked': '🔒 Read-only mode',
+        'msg-zen-toggle': 'Zen Mode (F11)',
+        'msg-zen-exit': 'Exited Zen Mode',
+        'msg-vim-on': '⌨️ Vim mode ON (ESC → Normal mode)',
+        'msg-vim-off': 'Normal mode',
+        'msg-text-only': 'Only text files can be opened',
+        'prompt-save-name': 'Enter file name (syntax coloring will apply):',
+        'toc-title': 'Contents'
     },
     'ja': {
         'btn-new': '新規ファイル (Ctrl+N)',
@@ -237,7 +283,30 @@ const i18nDict = {
         'btn-confirm-save': '保存',
         'btn-confirm-discard': '破棄',
         'btn-confirm-cancel': 'キャンセル',
-        'label-wordwrap': '折返し'
+        'label-wordwrap': '折返し',
+        'prompt-rename': 'タブ名を変更 (拡張子を含めると構文が自動検出されます):',
+        'msg-tab-renamed': 'タブ名を変更しました',
+        'msg-tab-reordered': 'タブの順序を変更しました',
+        'msg-tab-closed': 'タブを閉じました',
+        'msg-tab-restored': '閉じたタブを復元しました',
+        'msg-no-tab-restore': '復元するタブがありません',
+        'msg-file-opened': 'ファイルを開きました',
+        'msg-file-saved': '保存しました',
+        'msg-file-downloaded': 'ダウンロード保存 (互換モード)',
+        'msg-file-save-failed': '保存に失敗しました (権限が必要)',
+        'msg-backup-done': 'ワークスペースのバックアップ完了',
+        'msg-backup-restored': 'ワークスペースを復元しました',
+        'msg-backup-invalid': '無効なバックアップファイルです',
+        'msg-clipboard-copied': 'すべてクリップボードにコピー',
+        'msg-clipboard-denied': 'クリップボードの権限が拒否されました',
+        'msg-readonly-locked': '🔒 読み取り専用モード',
+        'msg-zen-toggle': '禅モード (F11)',
+        'msg-zen-exit': '禅モードを終了しました',
+        'msg-vim-on': '⌨️ Vimモード ON (ESC → ノーマルモード)',
+        'msg-vim-off': 'ノーマルモード',
+        'msg-text-only': 'テキストファイルのみ開けます',
+        'prompt-save-name': 'ファイル名を入力してください (構文カラーが自動適用されます):',
+        'toc-title': '目次'
     },
     'zh-TW': {
         'btn-new': '新檔案 (Ctrl+N)',
@@ -281,7 +350,30 @@ const i18nDict = {
         'btn-confirm-save': '儲存',
         'btn-confirm-discard': '不儲存',
         'btn-confirm-cancel': '取消',
-        'label-wordwrap': '換行'
+        'label-wordwrap': '換行',
+        'prompt-rename': '重新命名分頁 (包含副檔名可自動偵測語法):',
+        'msg-tab-renamed': '分頁已重新命名',
+        'msg-tab-reordered': '分頁已重新排序',
+        'msg-tab-closed': '分頁已關閉',
+        'msg-tab-restored': '已還原關閉的分頁',
+        'msg-no-tab-restore': '沒有可還原的分頁',
+        'msg-file-opened': '檔案已開啟',
+        'msg-file-saved': '儲存成功',
+        'msg-file-downloaded': '下載儲存成功 (相容模式)',
+        'msg-file-save-failed': '儲存失敗 (需要權限)',
+        'msg-backup-done': '工作區備份完成',
+        'msg-backup-restored': '工作區已還原',
+        'msg-backup-invalid': '無效的備份檔案',
+        'msg-clipboard-copied': '全部複製到剪貼簿',
+        'msg-clipboard-denied': '剪貼簿權限被拒絕',
+        'msg-readonly-locked': '🔒 唯讀模式',
+        'msg-zen-toggle': '全螢幕模式 (F11)',
+        'msg-zen-exit': '已退出全螢幕模式',
+        'msg-vim-on': '⌨️ Vim 模式開啟 (ESC → 命令模式)',
+        'msg-vim-off': '一般模式',
+        'msg-text-only': '僅能開啟文字檔案',
+        'prompt-save-name': '請輸入檔案名稱 (語法色彩將自動套用):',
+        'toc-title': '目錄'
     },
     'zh-CN': {
         'btn-new': '新文件 (Ctrl+N)',
@@ -325,9 +417,39 @@ const i18nDict = {
         'btn-confirm-save': '保存',
         'btn-confirm-discard': '不保存',
         'btn-confirm-cancel': '取消',
-        'label-wordwrap': '换行'
+        'label-wordwrap': '换行',
+        'prompt-rename': '重命名标签页 (包含扩展名可自动检测语法):',
+        'msg-tab-renamed': '标签页已重命名',
+        'msg-tab-reordered': '标签页已重新排序',
+        'msg-tab-closed': '标签页已关闭',
+        'msg-tab-restored': '已恢复关闭的标签页',
+        'msg-no-tab-restore': '没有可恢复的标签页',
+        'msg-file-opened': '文件已打开',
+        'msg-file-saved': '保存成功',
+        'msg-file-downloaded': '下载保存成功 (兼容模式)',
+        'msg-file-save-failed': '保存失败 (需要权限)',
+        'msg-backup-done': '工作区备份完成',
+        'msg-backup-restored': '工作区已恢复',
+        'msg-backup-invalid': '无效的备份文件',
+        'msg-clipboard-copied': '全部复制到剪贴板',
+        'msg-clipboard-denied': '剪贴板权限被拒绝',
+        'msg-readonly-locked': '🔒 只读模式',
+        'msg-zen-toggle': '全屏模式 (F11)',
+        'msg-zen-exit': '已退出全屏模式',
+        'msg-vim-on': '⌨️ Vim 模式已开启 (ESC → 命令模式)',
+        'msg-vim-off': '普通模式',
+        'msg-text-only': '仅能打开文本文件',
+        'prompt-save-name': '请输入文件名 (语法颜色将自动应用):',
+        'toc-title': '目录'
     }
 };
+
+// [v2.9.0] i18n 헬퍼: 딕셔너리 키를 간결하게 참조
+// 사용법: t('msg-tab-closed') → 현재 언어에 맞는 문자열 반환
+function t(key, fallback) {
+    const dict = i18nDict[appData.uiLang] || i18nDict['ko'];
+    return dict[key] || fallback || key;
+}
 
 let closedTabs = []; // For Undo Tab Close
 let cm; // CodeMirror instance
@@ -699,7 +821,7 @@ function renderTabs() {
         tabEl.addEventListener('dblclick', (e) => {
             e.preventDefault();
             const currentName = tab.title || displayTitle;
-            const newName = prompt('탭 이름 변경 (확장자 포함 시 구문 색상이 자동 감지됩니다):', currentName);
+            const newName = prompt(t('prompt-rename'), currentName);
             if (newName && newName.trim() !== '') {
                 tab.title = newName.trim();
                 renderTabs();
@@ -707,7 +829,7 @@ function renderTabs() {
                     autoDetectSyntax(tab.title);
                 }
                 saveToStorage();
-                showStatus(`탭 이름 변경됨: ${tab.title}`);
+                showStatus(`${t('msg-tab-renamed')}: ${tab.title}`);
             }
         });
 
@@ -743,7 +865,7 @@ function renderTabs() {
             appData.tabs.splice(toIdx, 0, moved);
             renderTabs();
             saveToStorage();
-            showStatus('탭 순서 변경됨');
+            showStatus(t('msg-tab-reordered'));
         });
 
         tabEl.querySelector('.tab-close').addEventListener('click', (e) => {
@@ -808,7 +930,7 @@ function closeTab(id) {
     renderTabs();
     loadActiveTabContent();
     saveToStorage();
-    showStatus('탭 닫힘');
+    showStatus(t('msg-tab-closed'));
 }
 
 // [5차 감사 4] 새 탭 제목 i18n 연동
@@ -844,9 +966,9 @@ function undoCloseTab() {
         renderTabs();
         loadActiveTabContent();
         saveToStorage();
-        showStatus('닫은 탭 복구됨');
+        showStatus(t('msg-tab-restored'));
     } else {
-        showStatus('복구할 탭이 없습니다.');
+        showStatus(t('msg-no-tab-restore'));
     }
 }
 
@@ -929,7 +1051,7 @@ function updateMarkdownPreview() {
             const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
             if (headings.length > 0) {
                 tocEl.classList.remove('hidden');
-                tocEl.innerHTML = '<div class="md-toc-title">📑 목차</div>';
+                tocEl.innerHTML = `<div class="md-toc-title">📑 ${t('toc-title', '목차')}</div>`;
                 headings.forEach((h, idx) => {
                     const level = parseInt(h.tagName[1]);
                     const item = document.createElement('div');
@@ -979,7 +1101,7 @@ async function handleOpenFile() {
             const file = await handle.getFile();
             const content = await file.text();
             addTab(file.name, content, 'text/plain', handle);
-            showStatus('파일 열기 성공');
+            showStatus(t('msg-file-opened'));
         } else {
             // Fallback for HTTP / Unsupported browsers
             const input = document.createElement('input');
@@ -991,7 +1113,7 @@ async function handleOpenFile() {
                 const reader = new FileReader();
                 reader.onload = ev => {
                     addTab(file.name, ev.target.result, 'text/plain', null);
-                    showStatus('파일 열기 성공 (HTTP 호환 모드)');
+                    showStatus(t('msg-file-opened'));
                 };
                 reader.readAsText(file);
             };
@@ -1000,7 +1122,7 @@ async function handleOpenFile() {
     } catch (err) {
         if (err.name !== 'AbortError') {
             console.error('File open error:', err);
-            showStatus('파일 열기 실패');
+            showStatus(t('status-error'));
         }
     }
 }
@@ -1016,7 +1138,7 @@ async function handleSaveFile(saveAs = false) {
     try {
         let suggestedName = activeTab.title;
         if (suggestedName.includes('무제') || suggestedName.includes('새 문서')) {
-            const newName = prompt('파일 이름을 지정해주세요 (미리 구문 색상이 적용됩니다):', "untitled.txt");
+            const newName = prompt(t('prompt-save-name', 'Enter file name (syntax coloring will apply):'), "untitled.txt");
             if (newName && newName.trim() !== '') {
                 // [감사 4-1] OS 파일명 금지 특수문자 자동 치환
                 // \ / : * ? " < > | 를 언더스코어로 대체하여 AbortError 방지
@@ -1067,7 +1189,7 @@ async function handleSaveFile(saveAs = false) {
 
             renderTabs(); // Refresh titles
             saveToStorage();
-            showStatus('네이티브 저장 성공');
+            showStatus(t('msg-file-saved'));
         } else {
             // Fallback: Download via blob
             let suggestedName = activeTab.title;
@@ -1089,12 +1211,12 @@ async function handleSaveFile(saveAs = false) {
             const currentTabUI = document.querySelector(`.tab[data-id="${appData.activeTabId}"] .tab-title`);
             if (currentTabUI) currentTabUI.classList.remove('modified');
 
-            showStatus('다운로드 저장 성공 (HTTP 호환 모드)');
+            showStatus(t('msg-file-downloaded'));
         }
     } catch (err) {
         if (err.name !== 'AbortError') {
             console.error('File save error:', err);
-            showStatus('저장에 실패했습니다 (권한 필요)');
+            showStatus(t('msg-file-save-failed'));
         }
     }
 }
@@ -1116,7 +1238,7 @@ function backupWorkspace() {
     const dataToBackup = { ...appData };
     dataToBackup.tabs = dataToBackup.tabs.map(t => ({ ...t, handle: null })); // remove non-json handles
     downloadFile(JSON.stringify(dataToBackup, null, 2), 'json', 'application/json', `webmemo_ws_${dateStr}`);
-    showStatus('워크스페이스 백업 완료');
+    showStatus(t('msg-backup-done'));
 }
 
 // Setup Event Listeners
@@ -1132,7 +1254,7 @@ function setupEventListeners() {
     document.getElementById('btn-zen').addEventListener('click', () => {
         document.body.classList.toggle('zen-mode');
         // cm.refresh() not needed in CM6;
-        showStatus('젠 모드 토글 (F11)');
+        showStatus(t('msg-zen-toggle'));
     });
 
     // Theme Selector
@@ -1226,7 +1348,7 @@ function setupEventListeners() {
                 )
             });
             saveToStorage();
-            showStatus(appData.vimMode ? '⌨️ Vim 모드 켜짐 (ESC → 명령 모드)' : '일반 모드');
+            showStatus(appData.vimMode ? t('msg-vim-on') : t('msg-vim-off'));
         });
     }
 
@@ -1292,10 +1414,10 @@ function setupEventListeners() {
                     closedTabs = [];
                     initApp();
 
-                    showStatus('워크스페이스 복원됨');
+                    showStatus(t('msg-backup-restored'));
                 }
             } catch (err) {
-                alert('유효하지 않은 백업 파일입니다.');
+                alert(t('msg-backup-invalid'));
             }
         };
         reader.readAsText(file);
@@ -1321,13 +1443,13 @@ function setupEventListeners() {
     // CM6 readOnly는 키보드 입력만 막고 cm.dispatch()로 주입되는 프로그래마톱 변경은 차단 못함
     document.getElementById('btn-cut').addEventListener('click', () => {
         const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
-        if (activeTab && activeTab.readonly) { showStatus('🔒 읽기 전용 모드'); return; }
+        if (activeTab && activeTab.readonly) { showStatus(t('msg-readonly-locked')); return; }
         const selection = cm.state.sliceDoc(cm.state.selection.main.from, cm.state.selection.main.to);
         if (selection) {
             navigator.clipboard.writeText(selection).then(() => {
                 cm.dispatch(cm.state.replaceSelection(''));
                 showStatus(i18nDict[appData.uiLang]['status-ready'] || '잘라내기 완료');
-            }).catch(e => showStatus('권한 거부됨'));
+            }).catch(e => showStatus(t('msg-clipboard-denied')));
         }
     });
 
@@ -1335,27 +1457,27 @@ function setupEventListeners() {
         const selection = cm.state.sliceDoc(cm.state.selection.main.from, cm.state.selection.main.to);
         if (selection) {
             navigator.clipboard.writeText(selection).then(() => showStatus(i18nDict[appData.uiLang]['status-ready'] || '복사 완료'))
-                .catch(e => showStatus('권한 거부됨'));
+                .catch(e => showStatus(t('msg-clipboard-denied')));
         }
     });
 
     document.getElementById('btn-paste').addEventListener('click', () => {
         const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
-        if (activeTab && activeTab.readonly) { showStatus('🔒 읽기 전용 모드'); return; }
+        if (activeTab && activeTab.readonly) { showStatus(t('msg-readonly-locked')); return; }
         navigator.clipboard.readText().then(text => {
             if (text) {
                 cm.dispatch(cm.state.replaceSelection(text));
                 showStatus(i18nDict[appData.uiLang]['status-ready'] || '붙여넣기 완료');
             }
-        }).catch(e => showStatus('권한 거부됨'));
+        }).catch(e => showStatus(t('msg-clipboard-denied')));
     });
 
     document.getElementById('btn-copy-all').addEventListener('click', async () => {
         try {
             await navigator.clipboard.writeText(cm.state.doc.toString());
-            showStatus('전체 클립보드 복사됨');
+            showStatus(t('msg-clipboard-copied'));
         } catch (e) {
-            showStatus('클립보드 권한 거부됨');
+            showStatus(t('msg-clipboard-denied'));
         }
     });
 
@@ -1369,7 +1491,7 @@ function setupEventListeners() {
             else btnReadonly.classList.remove('active');
             renderTabs();
             saveToStorage();
-            showStatus(activeTab.readonly ? '읽기 전용 모드' : '편집 가능');
+            showStatus(activeTab.readonly ? t('msg-readonly-locked') : t('status-ready'));
         }
     });
 
@@ -1387,7 +1509,7 @@ function setupEventListeners() {
             }
             document.body.classList.remove('zen-mode');
             if (document.fullscreenElement) document.exitFullscreen();
-            showStatus('젠 모드 종료');
+            showStatus(t('msg-zen-exit'));
             return;
         }
         if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't') {
@@ -1435,7 +1557,7 @@ function setupEventListeners() {
     document.addEventListener('fullscreenchange', () => {
         if (!document.fullscreenElement && document.body.classList.contains('zen-mode')) {
             document.body.classList.remove('zen-mode');
-            showStatus('젠 모드 종료');
+            showStatus(t('msg-zen-exit'));
         }
     });
 
@@ -1493,7 +1615,7 @@ function setupEventListeners() {
             const ext = file.name.split('.').pop().toLowerCase();
             const isText = file.type.startsWith('text/') || textExtensions.includes(ext);
             if (!isText) {
-                showStatus(`⚠️ ${file.name}: 텍스트 파일만 열 수 있습니다.`);
+                showStatus(`⚠️ ${file.name}: ${t('msg-text-only')}`);
                 return;
             }
             const reader = new FileReader();
@@ -1620,7 +1742,7 @@ function setupSearchController() {
     // Replace Logic
     document.getElementById('btn-replace').addEventListener('click', () => {
         const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
-        if (activeTab && activeTab.readonly) { showStatus('🔒 읽기 전용 모드'); return; }
+        if (activeTab && activeTab.readonly) { showStatus(t('msg-readonly-locked')); return; }
         const query = searchInput.value;
         const replacement = replaceInput.value;
         if (!query) return;
@@ -1643,7 +1765,7 @@ function setupSearchController() {
 
     document.getElementById('btn-replace-all').addEventListener('click', () => {
         const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
-        if (activeTab && activeTab.readonly) { showStatus('🔒 읽기 전용 모드'); return; }
+        if (activeTab && activeTab.readonly) { showStatus(t('msg-readonly-locked')); return; }
         const query = searchInput.value;
         const replacement = replaceInput.value;
         if (!query) return;
