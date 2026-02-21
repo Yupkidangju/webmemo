@@ -8,6 +8,8 @@ let syntaxHighlighting, defaultHighlightStyle, bracketMatching;
 let closeBrackets;
 // [v2.3.0] 미니맵 (스크롤 미니뷰) 확장 의존성
 let showMinimap;
+// [v2.8.0] Vim 에뮬레이터 (@replit/codemirror-vim)
+let vim;
 
 let languageConf;
 let readOnlyConf;
@@ -15,6 +17,8 @@ let themeConf;
 let fontConf;
 // [v2.4.0] Word Wrap(자동 줄바꿈) 동적 토글용 Compartment
 let wrapConf;
+// [v2.8.0] Vim 모드 동적 토글용 Compartment
+let vimConf;
 
 async function loadCM6() {
     const state = await import("https://esm.sh/@codemirror/state");
@@ -43,12 +47,19 @@ async function loadCM6() {
     const minimap = await import("https://esm.sh/@replit/codemirror-minimap");
     showMinimap = minimap.showMinimap;
 
+    // [v2.8.0] Replit 제작 CodeMirror 6 Vim 에뮬레이터 동적 로딩
+    // Normal/Insert/Visual 모드, :w, :q 등 Vim 커맨드 지원
+    const vimModule = await import("https://esm.sh/@replit/codemirror-vim");
+    vim = vimModule.vim;
+
     languageConf = new Compartment();
     readOnlyConf = new Compartment();
     themeConf = new Compartment();
     fontConf = new Compartment();
-    // [v2.4.0] Word Wrap Compartment: 런타임에 EditorView.lineWrapping을 동적 on/off
+    // [v2.4.0] Word Wrap Compartment
     wrapConf = new Compartment();
+    // [v2.8.0] Vim Compartment: 런타임에 Vim 모드를 동적 on/off
+    vimConf = new Compartment();
 }
 
 // ==========================================
@@ -76,7 +87,8 @@ let appData = {
     markdownMode: false,
     fontSize: 14,
     uiLang: detectInitialLanguage(), // Auto-detect UI Language
-    wordWrap: false // [v2.4.0] Word Wrap 상태 (기본: OFF, 코딩 시 줄바꿈 없음)
+    wordWrap: false, // [v2.4.0] Word Wrap 상태 (기본: OFF, 코딩 시 줄바꿈 없음)
+    vimMode: false // [v2.8.0] Vim 모드 상태 (기본: OFF, 일반 사용자 보호)
 };
 
 // ==========================================
@@ -556,6 +568,8 @@ function getEditorExtensions() {
         themeConf.of([]),
         fontConf.of([]),
         wrapConf.of(appData.wordWrap ? EditorView.lineWrapping : []),
+        // [v2.8.0] Vim 모드 확장 (Opt-in: 기본 OFF)
+        vimConf.of(appData.vimMode ? vim() : []),
         EditorState.allowMultipleSelections.of(true),
         showMinimap.compute(['doc'], (state) => ({
             create: createMinimap,
@@ -1195,6 +1209,24 @@ function setupEventListeners() {
                 ? (i18nDict[appData.uiLang]['label-wordwrap'] || 'Wrap') + ' ON'
                 : (i18nDict[appData.uiLang]['label-wordwrap'] || 'Wrap') + ' OFF';
             showStatus(statusMsg);
+        });
+    }
+
+    // [v2.8.0] Vim 모드 슬라이딩 토글 스위치 이벤트 핸들러
+    // Compartment reconfigure로 런타임에 Vim 확장을 동적 on/off
+    const toggleVim = document.getElementById('toggle-vim');
+    if (toggleVim) {
+        // 저장된 상태 복원
+        toggleVim.checked = appData.vimMode;
+        toggleVim.addEventListener('change', (e) => {
+            appData.vimMode = e.target.checked;
+            cm.dispatch({
+                effects: vimConf.reconfigure(
+                    appData.vimMode ? vim() : []
+                )
+            });
+            saveToStorage();
+            showStatus(appData.vimMode ? '⌨️ Vim 모드 켜짐 (ESC → 명령 모드)' : '일반 모드');
         });
     }
     // Toolbar Basic Action

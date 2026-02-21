@@ -2,6 +2,10 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v2.8.0] - 2026-02-21
+### Added (추가됨) - 킬러 기능
+- **Vim 모드 (Opt-in)**: `@replit/codemirror-vim`을 esm.sh로 동적 로딩. Normal/Insert/Visual 모드, `:w`, `:q` 등 Vim 커맨드 완벽 지원. 툴바 Vim 토글 스위치로 활성화/비활성화. `Compartment` 패턴으로 런타임 동적 on/off 가능. 기본값 OFF(일반 사용자 보호). IndexedDB에 상태 저장되어 다음 접속 시 자동 복원.
+
 ## [v2.7.0] - 2026-02-21
 ### Added (추가됨) - Gemini 제안 기능
 - **파일 드래그&드롭 오픈 (File DropZone)**: 탐색기/바탕화면에서 텍스트 파일을 브라우저에 드래그하면 새 탭으로 즉시 열림. 드롭 시 반투명 오버레이 + "📂 파일을 여기에 놓으세요" 시각 피드백. 30개 이상의 텍스트 확장자(`.txt`, `.md`, `.js`, `.py` 등) 자동 인식.
