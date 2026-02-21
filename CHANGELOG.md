@@ -2,6 +2,15 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v2.6.0] - 2026-02-21
+### Added (추가됨)
+- **탭 드래그&드롭 순서 변경**: HTML5 Drag API로 외부 라이브러리 없이 네이티브 구현. 드래그 시 반투명 + 드롭 대상에 accent 보더 시각적 피드백.
+- **탭별 스크롤 위치 저장**: 탭 전환 시 현재 스크롤 위치를 `tab.scrollTop`에 저장하고, 돌아올 때 `requestAnimationFrame`으로 복원. 대형 파일 작업 시 UX 대폭 향상.
+- **Ctrl+Tab / Ctrl+Shift+Tab 탭 전환**: 브라우저 탭 전환과 동일한 UX. 순환(Circular) 방식으로 마지막↔첫번째 탭 이동 가능.
+
+### Fixed (수정됨)
+- **showStatus() i18n 버그 수정**: 2초 후 하드코딩된 한국어 '준비됨'으로 복귀하던 문제 해결. 현재 UI 언어에 맞는 `status-ready` 딕셔너리 값 참조.
+
 ## [v2.5.4] - 2026-02-21
 ### Fixed (수정됨) - 5차 최종 감사 (아키텍처/상태관리)
 - **Undo/Redo 역사 출혈(History Bleed) 수정**: `loadActiveTabContent()`에서 `cm.dispatch()` 대신 `cm.setState()`로 EditorState를 완전 재생성. 탭 전환 시 History 스택이 초기화되어 탭간 Undo/Redo 데이터 혼선 원천 차단.

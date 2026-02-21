@@ -334,6 +334,16 @@ body.zen-mode .content-area {
     max-width: 200px;
     user-select: none;
     font-size: 13px;
+    transition: opacity 0.15s, border-color 0.15s;
+}
+
+/* [v2.6.0] 탭 드래그&드롭 시각적 피드백 */
+.tab.dragging {
+    opacity: 0.4;
+}
+
+.tab.drag-over {
+    border-left: 2px solid var(--accent);
 }
 
 .tab:hover {

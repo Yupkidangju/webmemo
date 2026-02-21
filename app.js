@@ -637,12 +637,13 @@ function renderTabs() {
         tabEl.querySelector('.tab-title').textContent = displayTitle;
         tabEl.querySelector('.tab-title').setAttribute('title', displayTitle);
 
+        // 탭 클릭 → 탭 전환
         tabEl.addEventListener('click', (e) => {
             if (e.target.closest('.tab-close')) return;
             switchTab(tab.id);
         });
 
-        // Double click to rename tab & trigger syntax highlight
+        // 더블클릭 → 탭 이름 변경 + 구문 색상 자동 감지
         tabEl.addEventListener('dblclick', (e) => {
             e.preventDefault();
             const currentName = tab.title || displayTitle;
@@ -650,14 +651,47 @@ function renderTabs() {
             if (newName && newName.trim() !== '') {
                 tab.title = newName.trim();
                 renderTabs();
-
-                // If it's the active tab, immediately apply new syntax
                 if (tab.id === appData.activeTabId) {
                     autoDetectSyntax(tab.title);
                 }
                 saveToStorage();
                 showStatus(`탭 이름 변경됨: ${tab.title}`);
             }
+        });
+
+        // [v2.6.0] 탭 드래그&드롭 순서 변경
+        // HTML5 Drag API로 외부 라이브러리 없이 네이티브 구현
+        tabEl.setAttribute('draggable', 'true');
+        tabEl.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', tab.id);
+            tabEl.classList.add('dragging');
+        });
+        tabEl.addEventListener('dragend', () => {
+            tabEl.classList.remove('dragging');
+            // 모든 탭의 드래그오버 표시 제거
+            document.querySelectorAll('.tab.drag-over').forEach(el => el.classList.remove('drag-over'));
+        });
+        tabEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            tabEl.classList.add('drag-over');
+        });
+        tabEl.addEventListener('dragleave', () => {
+            tabEl.classList.remove('drag-over');
+        });
+        tabEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            tabEl.classList.remove('drag-over');
+            const draggedId = e.dataTransfer.getData('text/plain');
+            if (draggedId === tab.id) return; // 자기 자신에게 드롭 무시
+            const fromIdx = appData.tabs.findIndex(t => t.id === draggedId);
+            const toIdx = appData.tabs.findIndex(t => t.id === tab.id);
+            if (fromIdx === -1 || toIdx === -1) return;
+            // 배열에서 이동: splice로 제거 후 새 위치에 삽입
+            const [moved] = appData.tabs.splice(fromIdx, 1);
+            appData.tabs.splice(toIdx, 0, moved);
+            renderTabs();
+            saveToStorage();
+            showStatus('탭 순서 변경됨');
         });
 
         tabEl.querySelector('.tab-close').addEventListener('click', (e) => {
@@ -671,7 +705,13 @@ function renderTabs() {
     // Undo btn visibilty mostly logic
 }
 
+// [v2.6.0] 탭 전환 시 현재 탭의 스크롤 위치를 저장하고 새 탭의 위치를 복원
 function switchTab(id) {
+    // 현재 탭의 스크롤 위치 저장
+    const currentTab = appData.tabs.find(t => t.id === appData.activeTabId);
+    if (currentTab && cm) {
+        currentTab.scrollTop = cm.scrollDOM.scrollTop;
+    }
     appData.activeTabId = id;
     renderTabs();
     loadActiveTabContent();
@@ -796,6 +836,14 @@ function loadActiveTabContent() {
     // Clear modification indicator
     const currentTabUI = document.querySelector(`.tab[data-id="${appData.activeTabId}"] .tab-title`);
     if (currentTabUI) currentTabUI.classList.remove('modified');
+
+    // [v2.6.0] 저장된 스크롤 위치 복원
+    // setState() 후 DOM 렌더링이 완료된 후 스크롤 이동
+    if (activeTab && activeTab.scrollTop) {
+        requestAnimationFrame(() => {
+            cm.scrollDOM.scrollTop = activeTab.scrollTop;
+        });
+    }
 }
 
 function updateActiveTabContent() {
@@ -823,11 +871,14 @@ function updateMarkdownPreview() {
 }
 
 let statusTimeout;
+// [v2.6.0] 상태 메시지 표시 (i18n 버그 수정)
+// 이전: 2초 후 하드코딩 '준비됨'으로 복귀 → 타 언어에서 한국어 표시
 function showStatus(msg) {
     statusMsgEl.textContent = msg;
     clearTimeout(statusTimeout);
     statusTimeout = setTimeout(() => {
-        statusMsgEl.textContent = '준비됨';
+        const readyMsg = (i18nDict[appData.uiLang] && i18nDict[appData.uiLang]['status-ready']) || '준비됨';
+        statusMsgEl.textContent = readyMsg;
     }, 2000);
 }
 
@@ -1209,6 +1260,22 @@ function setupEventListeners() {
         } else if (e.key === 'F11') {
             e.preventDefault();
             document.getElementById('btn-zen').click();
+            // [v2.6.0] Ctrl+Tab / Ctrl+Shift+Tab 탭 전환
+            // 브라우저 탭 전환과 동일한 UX 제공
+        } else if (e.ctrlKey && e.key === 'Tab') {
+            e.preventDefault();
+            const currentIdx = appData.tabs.findIndex(t => t.id === appData.activeTabId);
+            if (appData.tabs.length > 1) {
+                let nextIdx;
+                if (e.shiftKey) {
+                    // Ctrl+Shift+Tab → 이전 탭 (순환)
+                    nextIdx = (currentIdx - 1 + appData.tabs.length) % appData.tabs.length;
+                } else {
+                    // Ctrl+Tab → 다음 탭 (순환)
+                    nextIdx = (currentIdx + 1) % appData.tabs.length;
+                }
+                switchTab(appData.tabs[nextIdx].id);
+            }
         } else if (e.ctrlKey) {
             switch (e.key.toLowerCase()) {
                 case 's': e.preventDefault(); handleSaveFile(false); break;
