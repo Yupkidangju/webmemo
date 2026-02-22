@@ -795,8 +795,9 @@ function setTheme(themeName) {
             securityLevel: 'strict',
             theme: isDark ? 'dark' : 'default',
             fontFamily: "'Inter', sans-serif",
-            // [v3.0.0] quadrantChart 축 라벨 겹침 방지 패딩
-            quadrant: {
+            // [v3.0.0] quadrantChart 라벨-선 겹침 방지 (Inter 폰트 메트릭 보상)
+            quadrantChart: {
+                quadrantTextTopPadding: 15,
                 xAxisLabelPadding: 20,
                 yAxisLabelPadding: 20,
                 quadrantPadding: 10,
@@ -1950,7 +1951,9 @@ async function initApp() {
             securityLevel: 'strict',
             theme: isDark ? 'dark' : 'default',
             fontFamily: "'Inter', sans-serif",
-            quadrant: {
+            // quadrantChart 라벨-선 겹침 방지 (Inter 폰트 메트릭 보상)
+            quadrantChart: {
+                quadrantTextTopPadding: 15,
                 xAxisLabelPadding: 20,
                 yAxisLabelPadding: 20,
                 quadrantPadding: 10,
