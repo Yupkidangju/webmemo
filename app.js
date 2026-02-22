@@ -1081,8 +1081,45 @@ async function updateMarkdownPreview() {
                 const placeholder = preview.querySelector(`#${block.id}`);
                 if (placeholder) {
                     try {
+                        // [v3.0.0 패치] Mermaid CJK 전처리기
+                        // quadrantChart, xychart-beta에서 한/일/중 텍스트가 따옴표 없으면 렉서 에러 발생
+                        // CJK 문자(U+3000~U+9FFF, U+AC00~U+D7AF 한글)가 포함된 라벨을 자동 따옴표 처리
+                        const cjkPattern = /[\u3000-\u9fff\uac00-\ud7af\uff00-\uffef]/;
+                        let processedCode = block.code;
+                        if (cjkPattern.test(processedCode)) {
+                            processedCode = processedCode.split('\n').map(line => {
+                                const trimmed = line.trim();
+                                // title "텍스트" → 이미 따옴표 있으면 스킵
+                                if (/^title\s+[^"]/.test(trimmed) && cjkPattern.test(trimmed)) {
+                                    return line.replace(/^(\s*title\s+)(.+)$/, '$1"$2"');
+                                }
+                                // x-axis "A" --> "B" 형태 (quadrantChart)
+                                if (/^[xy]-axis\s+[^"\[]/.test(trimmed) && cjkPattern.test(trimmed)) {
+                                    if (trimmed.includes('-->')) {
+                                        return line.replace(/^(\s*[xy]-axis\s+)([^"]+?)\s*-->\s*([^"]+)$/, '$1"$2" --> "$3"');
+                                    }
+                                    // y-axis "라벨" 0 --> 100 형태 (xychart)
+                                    return line.replace(/^(\s*[xy]-axis\s+)([^"\[0-9]+?)(\s+\d)/, '$1"$2"$3');
+                                }
+                                // x-axis [1월, 2월] → ["1월", "2월"] (xychart 카테고리)
+                                if (/^(\s*x-axis\s+)\[/.test(trimmed) && cjkPattern.test(trimmed)) {
+                                    return line.replace(/\[([^\]]+)\]/, (m, inner) => {
+                                        const items = inner.split(',').map(s => {
+                                            const t = s.trim();
+                                            return t.startsWith('"') ? t : `"${t}"`;
+                                        });
+                                        return `[${items.join(', ')}]`;
+                                    });
+                                }
+                                // quadrant-1~4 라벨
+                                if (/^quadrant-[1-4]\s+[^"]/.test(trimmed) && cjkPattern.test(trimmed)) {
+                                    return line.replace(/^(\s*quadrant-[1-4]\s+)(.+)$/, '$1"$2"');
+                                }
+                                return line;
+                            }).join('\n');
+                        }
                         // Mermaid에게 SVG 렌더링 요청
-                        const { svg } = await mermaid.render(`mermaid-svg-${block.id}`, block.code);
+                        const { svg } = await mermaid.render(`mermaid-svg-${block.id}`, processedCode);
                         // 2차 살균: Mermaid가 생성한 SVG에서 악성 스크립트 제거
                         placeholder.innerHTML = DOMPurify.sanitize(svg, {
                             USE_PROFILES: { svg: true, svgFilters: true },
