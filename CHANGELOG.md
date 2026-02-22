@@ -2,6 +2,16 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v3.0.0] - 2026-02-22
+### Added (추가됨) - 시각 렌더링 엔진
+- **Mermaid 다이어그램 렌더링**: `mermaid.js` v11.12.3 CDN 로딩. 마크다운 프리뷰에서 ` ```mermaid ` 코드블록을 13종+ 다이어그램(순서도, 시퀀스, 간트, 클래스, 상태, ER, 파이, 마인드맵, 타임라인 등)으로 실시간 SVG 렌더링. 테마 전환 시 다크/라이트 자동 연동. **이중 살균(Double Sanitize) 보안 패턴** 적용 — DOMPurify 1차 살균 후 Mermaid SVG 출력을 2차 살균하여 SVG 내 스크립트 주입 원천 차단.
+- **KaTeX 수학 공식 렌더링**: `katex` v0.16.28 CDN 로딩. 인라인 수식(`$E=mc^2$`), 블록 수식(`$$\sum_{i=1}^{n}$$`). auto-render 확장으로 프리뷰 내 자동 검출. 구조적으로 XSS 불가능한 안전한 렌더러.
+- **i18n 헬퍼 함수 `t(key)`**: 5개 언어 딕셔너리에 24개 새 키 추가 (총 120개 번역). 모든 showStatus/prompt/alert 하드코딩 한국어 제거.
+
+### Changed (변경됨)
+- **`updateMarkdownPreview()`를 `async`로 전환**: Mermaid의 비동기 SVG 렌더링(`await mermaid.render()`) 지원.
+- **버전 점프 v2.9.0 → v3.0.0**: 마크다운 렌더링에 다이어그램 엔진 통합은 에디터의 핵심 기능 패러다임 변경에 해당하므로 메이저 버전 업.
+
 ## [v2.8.0] - 2026-02-21
 ### Added (추가됨) - 킬러 기능
 - **Vim 모드 (Opt-in)**: `@replit/codemirror-vim`을 esm.sh로 동적 로딩. Normal/Insert/Visual 모드, `:w`, `:q` 등 Vim 커맨드 완벽 지원. 툴바 Vim 토글 스위치로 활성화/비활성화. `Compartment` 패턴으로 런타임 동적 on/off 가능. 기본값 OFF(일반 사용자 보호). IndexedDB에 상태 저장되어 다음 접속 시 자동 복원.

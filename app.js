@@ -787,6 +787,16 @@ function setFontSize(size) {
 function setTheme(themeName) {
     appData.theme = themeName;
     document.body.setAttribute('data-theme', themeName);
+    // [v3.0.0] Mermaid 테마 연동 (다크/라이트 자동 전환)
+    if (typeof mermaid !== 'undefined') {
+        const isDark = ['dark', 'monokai', 'solarized-dark'].includes(themeName);
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'strict',
+            theme: isDark ? 'dark' : 'default',
+            fontFamily: "'Inter', sans-serif"
+        });
+    }
     saveToStorage();
 }
 
@@ -1033,7 +1043,7 @@ function updateActiveTabContent() {
 
 // [5차 감사 3] 마크다운 프리뷰 갱신 함수
 // DOMPurify 훅은 initApp()에서 1회만 등록 (메모리 누수 방지)
-function updateMarkdownPreview() {
+async function updateMarkdownPreview() {
     const tocEl = document.getElementById('md-toc');
     if (appData.markdownMode) {
         const docText = cm.state.doc.toString() || '';
@@ -1043,7 +1053,61 @@ function updateMarkdownPreview() {
             if (tocEl) tocEl.classList.add('hidden');
             return;
         }
-        preview.innerHTML = DOMPurify.sanitize(marked.parse(docText));
+        // [v3.0.0] Mermaid + KaTeX 통합 렌더링 파이프라인
+        // 보안 전략: 이중 살균 (Double Sanitize) 패턴
+        // 1단계: Mermaid 코드블록을 placeholder로 분리 보관
+        // 2단계: DOMPurify 1차 살균 (일반 마크다운)
+        // 3단계: placeholder에 Mermaid 원본 복원 → mermaid.run()
+        // 4단계: 생성된 SVG를 DOMPurify 2차 살균
+        // 5단계: KaTeX 수식 렌더링 (구조적으로 XSS 불가)
+        const mermaidBlocks = [];
+        // Mermaid 코드블록을 placeholder로 교체 (DOMPurify가 삭제하지 않도록 보호)
+        const processedText = docText.replace(/```mermaid\s*\n([\s\S]*?)```/g, (match, code, offset) => {
+            const id = `mermaid-placeholder-${mermaidBlocks.length}`;
+            mermaidBlocks.push({ id, code: code.trim() });
+            return `<div id="${id}" class="mermaid-placeholder"></div>`;
+        });
+
+        // marked 파싱 → DOMPurify 1차 살균 (Mermaid 원본은 이미 placeholder로 보호됨)
+        const parsedHtml = marked.parse(processedText);
+        preview.innerHTML = DOMPurify.sanitize(parsedHtml, {
+            ADD_TAGS: ['div'],
+            ADD_ATTR: ['id', 'class']
+        });
+
+        // Mermaid 렌더링 (placeholder 위치에 다이어그램 삽입)
+        if (mermaidBlocks.length > 0 && typeof mermaid !== 'undefined') {
+            for (const block of mermaidBlocks) {
+                const placeholder = preview.querySelector(`#${block.id}`);
+                if (placeholder) {
+                    try {
+                        // Mermaid에게 SVG 렌더링 요청
+                        const { svg } = await mermaid.render(`mermaid-svg-${block.id}`, block.code);
+                        // 2차 살균: Mermaid가 생성한 SVG에서 악성 스크립트 제거
+                        placeholder.innerHTML = DOMPurify.sanitize(svg, {
+                            USE_PROFILES: { svg: true, svgFilters: true },
+                            ADD_TAGS: ['foreignObject'],
+                            FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover']
+                        });
+                        placeholder.classList.add('mermaid-rendered');
+                    } catch (err) {
+                        // 잘못된 Mermaid 구문 시 에러 메시지 표시
+                        placeholder.innerHTML = `<div class="mermaid-error">⚠️ Mermaid 구문 오류: ${DOMPurify.sanitize(err.message)}</div>`;
+                    }
+                }
+            }
+        }
+
+        // KaTeX 수식 렌더링 ($...$: 인라인, $$...$$: 블록)
+        if (typeof renderMathInElement !== 'undefined') {
+            renderMathInElement(preview, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                ],
+                throwOnError: false // 잘못된 수식은 빨간 텍스트로 표시 (크래시 방지)
+            });
+        }
 
         // [v2.7.0 패치] Floating TOC - 이벤트 위임(Event Delegation) 방식
         // 매 키입력마다 개별 아이템에 리스너를 다는 대신 부모에 1회 등록
@@ -1825,6 +1889,19 @@ async function initApp() {
         breaks: true,
         gfm: true
     });
+
+    // [v3.0.0] Mermaid.js 초기화 (다이어그램 렌더링 엔진)
+    // startOnLoad: false → 자동 렌더링 방지 (updateMarkdownPreview에서 수동 제어)
+    // securityLevel: 'strict' → XSS 방지 모드 (HTML 태그 삽입 차단)
+    if (typeof mermaid !== 'undefined') {
+        const isDark = ['dark', 'monokai', 'solarized-dark'].includes(appData.theme);
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'strict',
+            theme: isDark ? 'dark' : 'default',
+            fontFamily: "'Inter', sans-serif"
+        });
+    }
 
     // [5차 감사 3] DOMPurify 보안 훅 1회 등록 (앱 생명주기 동안 자동 적용)
     // target="_blank" 링크에 rel="noopener noreferrer" 자동 부여하여

@@ -674,6 +674,40 @@ body.zen-mode .content-area {
     font-size: 11px;
 }
 
+/* [v3.0.0] Mermaid 다이어그램 스타일 */
+.mermaid-placeholder,
+.mermaid-rendered {
+    margin: 16px 0;
+    padding: 16px;
+    background: var(--bg-toolbar);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    overflow-x: auto;
+}
+
+.mermaid-rendered svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.mermaid-error {
+    color: #ef4444;
+    font-size: 13px;
+    padding: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 4px;
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* [v3.0.0] KaTeX 수학 수식 스타일 */
+.katex-display {
+    margin: 12px 0;
+    overflow-x: auto;
+    padding: 8px 0;
+}
+
 /* Markdown Styles inside Preview */
 .markdown-preview {
     flex: 1;
