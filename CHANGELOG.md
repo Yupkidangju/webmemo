@@ -8,6 +8,11 @@
 - **KaTeX 수학 공식 렌더링**: `katex` v0.16.28 CDN 로딩. 인라인 수식(`$E=mc^2$`), 블록 수식(`$$\sum_{i=1}^{n}$$`). auto-render 확장으로 프리뷰 내 자동 검출. 구조적으로 XSS 불가능한 안전한 렌더러.
 - **i18n 헬퍼 함수 `t(key)`**: 5개 언어 딕셔너리에 24개 새 키 추가 (총 120개 번역). 모든 showStatus/prompt/alert 하드코딩 한국어 제거.
 
+### Fixed (수정됨) — Mermaid CJK 전처리기
+- **CJK 전처리기 차트 타입별 분기**: quadrantChart와 xychart-beta의 따옴표 규칙이 다른 문제 해결. 차트 타입을 자동 감지하여 적절한 따옴표 처리 적용. quadrantChart의 title은 따옴표 없이, xychart-beta의 title과 x-axis 배열 내 CJK 항목에는 자동 따옴표 추가.
+- **quadrantChart 라벨-선 겹침 해결**: `mermaid.initialize()`의 config 키 `quadrant` → `quadrantChart`로 수정. `quadrantTextTopPadding: 15`를 적용하여 사분면 라벨이 경계선 아래에 깔끔하게 배치되도록 수정.
+- **SVG CJK 텍스트 잘림 방지**: `overflow: visible` 및 좌측/하단 패딩 확대로 회전된 Y축 라벨과 X축 라벨이 차트 영역을 침범하지 않도록 CSS 보정.
+
 ### Changed (변경됨)
 - **`updateMarkdownPreview()`를 `async`로 전환**: Mermaid의 비동기 SVG 렌더링(`await mermaid.render()`) 지원.
 - **버전 점프 v2.9.0 → v3.0.0**: 마크다운 렌더링에 다이어그램 엔진 통합은 에디터의 핵심 기능 패러다임 변경에 해당하므로 메이저 버전 업.
