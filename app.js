@@ -794,7 +794,14 @@ function setTheme(themeName) {
             startOnLoad: false,
             securityLevel: 'strict',
             theme: isDark ? 'dark' : 'default',
-            fontFamily: "'Inter', sans-serif"
+            fontFamily: "'Inter', sans-serif",
+            // [v3.0.0] quadrantChart 축 라벨 겹침 방지 패딩
+            quadrant: {
+                xAxisLabelPadding: 20,
+                yAxisLabelPadding: 20,
+                quadrantPadding: 10,
+                titlePadding: 15
+            }
         });
     }
     saveToStorage();
@@ -1942,7 +1949,13 @@ async function initApp() {
             startOnLoad: false,
             securityLevel: 'strict',
             theme: isDark ? 'dark' : 'default',
-            fontFamily: "'Inter', sans-serif"
+            fontFamily: "'Inter', sans-serif",
+            quadrant: {
+                xAxisLabelPadding: 20,
+                yAxisLabelPadding: 20,
+                quadrantPadding: 10,
+                titlePadding: 15
+            }
         });
     }
 
