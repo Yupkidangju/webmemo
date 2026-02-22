@@ -724,11 +724,14 @@ body.zen-mode .content-area {
 
 /* Markdown Styles inside Preview */
 .markdown-preview {
+    position: relative;
+    /* offsetParent 기준점 — TOC 스크롤 좌표 계산에 필수 */
     flex: 1;
     width: 50%;
     height: 100%;
     overflow-y: auto;
-    padding: 16px 32px;
+    padding: 16px 32px 50vh 32px;
+    /* 하단 50vh: 문서 끝 헤딩도 TOC 클릭 시 상단 이동 가능 */
     border-left: 1px solid var(--border-color);
     background-color: var(--bg-main);
     color: var(--text-main);

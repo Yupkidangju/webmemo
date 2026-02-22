@@ -1558,13 +1558,18 @@ function setupEventListeners() {
             const idx = parseInt(item.dataset.tocIdx);
             const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6');
             if (headings[idx]) {
-                // [v3.0.0 패치] scrollIntoView 대신 프리뷰 컨테이너 내부 스크롤 사용
-                // scrollIntoView()는 프리뷰뿐 아니라 body/main까지 스크롤시켜
-                // TOC가 화면 밖으로 밀려나고 레이아웃이 깨지는 버그 발생
+                // [v3.0.0 패치] 프리뷰 컨테이너 내부 스크롤 (레이아웃 깨짐 방지)
+                // offsetParent 체인을 순회하여 프리뷰 컨테이너 기준 절대 좌표 계산
                 const previewEl = document.getElementById('preview');
                 if (previewEl) {
-                    const headingTop = headings[idx].offsetTop;
-                    previewEl.scrollTo({ top: headingTop - 16, behavior: 'smooth' });
+                    let top = 0;
+                    let el = headings[idx];
+                    // offsetParent 체인을 따라가며 프리뷰까지의 누적 offsetTop 계산
+                    while (el && el !== previewEl) {
+                        top += el.offsetTop;
+                        el = el.offsetParent;
+                    }
+                    previewEl.scrollTo({ top: Math.max(0, top - 16), behavior: 'smooth' });
                 }
                 // [쟌둥이 헤딩 수정] 문자열 검색 대신 n번째 헤딩 출현 순서로 정확한 라인 찾기
                 // 동일한 텍스트의 헤딩이 여러 개 있어도 정확한 위치로 이동
