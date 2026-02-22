@@ -689,6 +689,20 @@ body.zen-mode .content-area {
 .mermaid-rendered svg {
     max-width: 100%;
     height: auto;
+    overflow: visible;
+    /* CJK 텍스트 잘림 방지 */
+}
+
+/* Mermaid SVG 내부 텍스트 잘림 방지 (CJK 폭 보상) */
+.mermaid-rendered svg text {
+    overflow: visible;
+}
+
+/* Mermaid quadrant/xychart의 축 라벨 영역 확장 */
+.mermaid-placeholder,
+.mermaid-rendered {
+    padding: 20px 30px 32px 40px;
+    /* 좌측+하단 확대: 회전 Y축 + X축 라벨 잘림 방지 */
 }
 
 .mermaid-error {

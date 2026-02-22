@@ -1082,39 +1082,45 @@ async function updateMarkdownPreview() {
                 if (placeholder) {
                     try {
                         // [v3.0.0 패치] Mermaid CJK 전처리기
-                        // quadrantChart, xychart-beta에서 한/일/중 텍스트가 따옴표 없으면 렉서 에러 발생
-                        // CJK 문자(U+3000~U+9FFF, U+AC00~U+D7AF 한글)가 포함된 라벨을 자동 따옴표 처리
+                        // 차트 타입별 분기: quadrantChart와 xychart-beta의 따옴표 규칙이 다름
                         const cjkPattern = /[\u3000-\u9fff\uac00-\ud7af\uff00-\uffef]/;
                         let processedCode = block.code;
                         if (cjkPattern.test(processedCode)) {
+                            // 차트 타입 감지 (첫 번째 비공백 줄)
+                            const firstLine = processedCode.split('\n').find(l => l.trim())?.trim() || '';
+                            const isXYChart = firstLine.startsWith('xychart');
+
                             processedCode = processedCode.split('\n').map(line => {
                                 const trimmed = line.trim();
-                                // title "텍스트" → 이미 따옴표 있으면 스킵
-                                if (/^title\s+[^"]/.test(trimmed) && cjkPattern.test(trimmed)) {
+
+                                // title 처리: xychart-beta만 따옴표 필요 (quadrantChart는 리터럴 표시됨)
+                                if (/^title\s+[^"]/.test(trimmed) && cjkPattern.test(trimmed) && isXYChart) {
                                     return line.replace(/^(\s*title\s+)(.+)$/, '$1"$2"');
                                 }
-                                // x-axis "A" --> "B" 형태 (quadrantChart)
+
+                                // x-axis/y-axis "A" --> "B" 형태 (quadrantChart 축 범위)
                                 if (/^[xy]-axis\s+[^"\[]/.test(trimmed) && cjkPattern.test(trimmed)) {
                                     if (trimmed.includes('-->')) {
                                         return line.replace(/^(\s*[xy]-axis\s+)([^"]+?)\s*-->\s*([^"]+)$/, '$1"$2" --> "$3"');
                                     }
-                                    // y-axis "라벨" 0 --> 100 형태 (xychart)
-                                    return line.replace(/^(\s*[xy]-axis\s+)([^"\[0-9]+?)(\s+\d)/, '$1"$2"$3');
                                 }
-                                // x-axis [1월, 2월] → ["1월", "2월"] (xychart 카테고리)
-                                if (/^(\s*x-axis\s+)\[/.test(trimmed) && cjkPattern.test(trimmed)) {
+
+                                // quadrant-1~4 라벨 (quadrantChart 전용)
+                                if (/^quadrant-[1-4]\s+[^"]/.test(trimmed) && cjkPattern.test(trimmed)) {
+                                    return line.replace(/^(\s*quadrant-[1-4]\s+)(.+)$/, '$1"$2"');
+                                }
+
+                                // xychart x-axis [1월, 2월] → ["1월", "2월"] (배열 내 CJK 항목 따옴표)
+                                if (isXYChart && /^\s*x-axis\s+\[/.test(trimmed) && cjkPattern.test(trimmed)) {
                                     return line.replace(/\[([^\]]+)\]/, (m, inner) => {
                                         const items = inner.split(',').map(s => {
-                                            const t = s.trim();
-                                            return t.startsWith('"') ? t : `"${t}"`;
+                                            const v = s.trim();
+                                            return (v.startsWith('"') || !cjkPattern.test(v)) ? v : `"${v}"`;
                                         });
                                         return `[${items.join(', ')}]`;
                                     });
                                 }
-                                // quadrant-1~4 라벨
-                                if (/^quadrant-[1-4]\s+[^"]/.test(trimmed) && cjkPattern.test(trimmed)) {
-                                    return line.replace(/^(\s*quadrant-[1-4]\s+)(.+)$/, '$1"$2"');
-                                }
+
                                 return line;
                             }).join('\n');
                         }
