@@ -718,7 +718,12 @@ function getEditorExtensions() {
                 const activeTab = appData.tabs.find(t => t.id === appData.activeTabId);
                 if (activeTab && activeTab.content !== cm.state.doc.toString()) {
                     activeTab.content = cm.state.doc.toString();
-                    updateMarkdownPreview();
+                    // [v3.0.0 패치] 비동기 렌더링 Debounce (150ms)
+                    // 빠른 타이핑 시 mermaid.render() 레이스 컨디션 방지
+                    clearTimeout(window.markdownPreviewTimer);
+                    window.markdownPreviewTimer = setTimeout(() => {
+                        updateMarkdownPreview();
+                    }, 150);
                     updateStats();
                     const ui = document.querySelector(`.tab[data-id="${activeTab.id}"] .tab-title`);
                     if (ui) ui.classList.add('modified');
@@ -1055,9 +1060,15 @@ function updateActiveTabContent() {
     }
 }
 
+// [v3.0.0 패치] 렌더링 버전 토큰 (레이스 컨디션 방지)
+// 비동기 렌더링 완료 시점에 현재 토큰과 일치해야만 DOM 업데이트 허용
+let renderToken = 0;
+
 // [5차 감사 3] 마크다운 프리뷰 갱신 함수
 // DOMPurify 훅은 initApp()에서 1회만 등록 (메모리 누수 방지)
 async function updateMarkdownPreview() {
+    // 렌더링 버전 증가 — 이전에 시작된 비동기 렌더링을 무효화
+    const currentToken = ++renderToken;
     const tocEl = document.getElementById('md-toc');
     if (appData.markdownMode) {
         const docText = cm.state.doc.toString() || '';
@@ -1067,25 +1078,52 @@ async function updateMarkdownPreview() {
             if (tocEl) tocEl.classList.add('hidden');
             return;
         }
-        // [v3.0.0] Mermaid + KaTeX 통합 렌더링 파이프라인
+        // [v3.0.0] Mermaid + KaTeX 통합 렌더링 파이프라인 (다중 패스 보호)
         // 보안 전략: 이중 살균 (Double Sanitize) 패턴
+        // 0단계: 코드블록/인라인코드를 보호 (KaTeX 정규식 침범 방지)
         // 1단계: KaTeX 블록 수식($$...$$)을 placeholder로 분리 보관
-        // 2단계: Mermaid 코드블록을 placeholder로 분리 보관
-        // 3단계: DOMPurify 1차 살균 (일반 마크다운)
-        // 4단계: placeholder에 Mermaid 원본 복원 → mermaid.render()
-        // 5단계: 생성된 SVG를 DOMPurify 2차 살균
-        // 6단계: KaTeX 블록 수식 복원 (katex.renderToString)
-        // 7단계: KaTeX 인라인 수식 렌더링 (renderMathInElement)
+        // 2단계: 코드블록 복원 (marked/Mermaid가 정상 파싱하도록)
+        // 3단계: Mermaid 코드블록을 placeholder로 분리 보관
+        // 4단계: DOMPurify 1차 살균 (일반 마크다운)
+        // 5단계: placeholder에 Mermaid 원본 복원 → mermaid.render()
+        // 6단계: 생성된 SVG를 DOMPurify 2차 살균
+        // 7단계: KaTeX 블록 수식 복원 (katex.renderToString)
+        // 8단계: KaTeX 인라인 수식 렌더링 (renderMathInElement)
 
-        // [v3.0.0 패치] KaTeX 블록 수식($$...$$) placeholder 보호
+        // [0단계] 코드블록 선행 보호 - KaTeX $$ 정규식이 코드 내 $$를 수식으로 오인하는 것 방지
+        // 예: ```bash 내부의 echo $$ 가 수식으로 잘못 추출되는 버그 차단
+        const codeBlockPhs = [];
+        let codeProtected = docText.replace(/^[ ]{0,3}```[\s\S]*?^[ ]{0,3}```/gm, (match) => {
+            const id = `cb-ph-${codeBlockPhs.length}`;
+            codeBlockPhs.push({ id, content: match });
+            return `<!--${id}-->`;
+        });
+        // 인라인 코드도 보호 (`$x$` 같은 코드 내 달러 기호 침범 방지)
+        const inlineCodePhs = [];
+        codeProtected = codeProtected.replace(/`[^`]+`/g, (match) => {
+            const id = `ic-ph-${inlineCodePhs.length}`;
+            inlineCodePhs.push({ id, content: match });
+            return `<!--${id}-->`;
+        });
+
+        // [1단계] KaTeX 블록 수식($$...$$) placeholder 보호
         // marked.parse()가 여러 줄 $$...$$ 블록을 <p> 태그로 분리하여
         // renderMathInElement이 쌍을 인식하지 못하는 문제 방지
         const katexBlocks = [];
-        const katexProtected = docText.replace(/\$\$([\s\S]*?)\$\$/gm, (match, formula) => {
+        const katexExtracted = codeProtected.replace(/\$\$([\s\S]*?)\$\$/gm, (match, formula) => {
             const id = `katex-ph-${Math.random().toString(36).substring(2, 11)}-${katexBlocks.length}`;
             katexBlocks.push({ id, formula: formula.trim() });
             return `<div id="${id}" class="katex-placeholder"></div>`;
         });
+
+        // [2단계] 코드블록/인라인코드 복원 (Mermaid 추출 + marked가 정상 파싱하도록)
+        let katexProtected = katexExtracted;
+        for (const ph of inlineCodePhs) {
+            katexProtected = katexProtected.replace(`<!--${ph.id}-->`, ph.content);
+        }
+        for (const ph of codeBlockPhs) {
+            katexProtected = katexProtected.replace(`<!--${ph.id}-->`, ph.content);
+        }
 
         const mermaidBlocks = [];
         // Mermaid 코드블록을 placeholder로 교체 (DOMPurify가 삭제하지 않도록 보호)
@@ -1154,6 +1192,8 @@ async function updateMarkdownPreview() {
                         }
                         // Mermaid에게 SVG 렌더링 요청
                         const { svg } = await mermaid.render(`mermaid-svg-${block.id}`, processedCode);
+                        // [v3.0.0 패치] 렌더 토큰 검증: await 사이에 새 렌더링이 시작되었으면 중단
+                        if (currentToken !== renderToken) return;
                         // 2차 살균: Mermaid가 생성한 SVG에서 악성 스크립트 제거
                         placeholder.innerHTML = DOMPurify.sanitize(svg, {
                             USE_PROFILES: { svg: true, svgFilters: true },
@@ -1168,6 +1208,9 @@ async function updateMarkdownPreview() {
                 }
             }
         }
+
+        // [v3.0.0 패치] 렌더 토큰 검증: Mermaid 렌더링 완료 후 새 렌더링이 시작되었으면 중단
+        if (currentToken !== renderToken) return;
 
         // [v3.0.0 패치] KaTeX 블록 수식 복원 (katex.renderToString 직접 렌더링)
         // marked.parse()에 의한 <p> 분리를 우회하여 여러 줄 블록 수식 정상 렌더링
