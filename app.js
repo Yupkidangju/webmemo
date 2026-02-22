@@ -797,7 +797,9 @@ function setTheme(themeName) {
         const isDark = ['dark', 'monokai', 'solarized-dark'].includes(themeName);
         mermaid.initialize({
             startOnLoad: false,
-            securityLevel: 'strict',
+            // [v3.0.0 패치] securityLevel: 'loose' — classDef 스타일링 허용
+            // 보안은 DOMPurify 2차 살균이 담당 (FORBID_ATTR로 이벤트 핸들러 제거)
+            securityLevel: 'loose',
             theme: isDark ? 'dark' : 'default',
             fontFamily: "'Inter', sans-serif",
             // [v3.0.0] quadrantChart 라벨-선 겹침 방지 (Inter 폰트 메트릭 보상)
@@ -2036,12 +2038,12 @@ async function initApp() {
 
     // [v3.0.0] Mermaid.js 초기화 (다이어그램 렌더링 엔진)
     // startOnLoad: false → 자동 렌더링 방지 (updateMarkdownPreview에서 수동 제어)
-    // securityLevel: 'strict' → XSS 방지 모드 (HTML 태그 삽입 차단)
+    // securityLevel: 'loose' — classDef/subgraph 스타일링 허용 (DOMPurify 2차 살균으로 XSS 방어)
     if (typeof mermaid !== 'undefined') {
         const isDark = ['dark', 'monokai', 'solarized-dark'].includes(appData.theme);
         mermaid.initialize({
             startOnLoad: false,
-            securityLevel: 'strict',
+            securityLevel: 'loose',
             theme: isDark ? 'dark' : 'default',
             fontFamily: "'Inter', sans-serif",
             // quadrantChart 라벨-선 겹침 방지 (Inter 폰트 메트릭 보상)
