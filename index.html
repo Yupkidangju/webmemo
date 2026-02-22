@@ -23,13 +23,21 @@
 
     <!-- [v3.0.0] Mermaid.js (다이어그램 렌더링) -->
     <!-- 순서도, 시퀀스, 간트, 클래스, 상태, ER, 파이, 마인드맵 등 13종+ 다이어그램 지원 -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.12.3/dist/mermaid.min.js" defer></script>
+    <!-- [v3.0.0 패치] SRI 해시 추가 - CDN 공급망 변조 공격 방어 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.12.3/dist/mermaid.min.js"
+        integrity="sha384-jFhLSLFn4m565eRAS0CDMWubMqOtfZWWbE8kqgGdU+VHbJ3B2G/4X8u+0BM8MtdU" crossorigin="anonymous"
+        defer></script>
 
     <!-- [v3.0.0] KaTeX (수학 공식 렌더링) -->
     <!-- LaTeX 구문의 수학 공식을 고속 렌더링 (MathJax 대비 100배 빠름) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/contrib/auto-render.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.css"
+        integrity="sha384-Wsr4Nh3yrvMf2KCebJchRJoVo1gTU6kcP05uRSh5NV3sj9+a8IomuJoQzf3sMq4T" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/katex.min.js"
+        integrity="sha384-+W9OcrYK2/bD7BmUAk+xeFAyKp0QjyRQUCxeU31dfyTt/FrPsUgaBTLLkVf33qWt" crossorigin="anonymous"
+        defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.28/dist/contrib/auto-render.min.js"
+        integrity="sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh" crossorigin="anonymous"
+        defer></script>
 
     <!-- localForage (IndexedDB Wrapper for large capacity) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"

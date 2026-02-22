@@ -806,6 +806,12 @@ function setTheme(themeName) {
         });
     }
     saveToStorage();
+
+    // [v3.0.0 패치] 테마 전환 시 Mermaid/KaTeX 색상 즉시 동기화
+    // mermaid.initialize()는 설정만 변경하고 기존 SVG는 갱신하지 않으므로 강제 재렌더링 필요
+    if (appData.markdownMode && typeof cm !== 'undefined' && cm) {
+        updateMarkdownPreview();
+    }
 }
 
 // Tab Management
@@ -1063,20 +1069,34 @@ async function updateMarkdownPreview() {
         }
         // [v3.0.0] Mermaid + KaTeX 통합 렌더링 파이프라인
         // 보안 전략: 이중 살균 (Double Sanitize) 패턴
-        // 1단계: Mermaid 코드블록을 placeholder로 분리 보관
-        // 2단계: DOMPurify 1차 살균 (일반 마크다운)
-        // 3단계: placeholder에 Mermaid 원본 복원 → mermaid.run()
-        // 4단계: 생성된 SVG를 DOMPurify 2차 살균
-        // 5단계: KaTeX 수식 렌더링 (구조적으로 XSS 불가)
+        // 1단계: KaTeX 블록 수식($$...$$)을 placeholder로 분리 보관
+        // 2단계: Mermaid 코드블록을 placeholder로 분리 보관
+        // 3단계: DOMPurify 1차 살균 (일반 마크다운)
+        // 4단계: placeholder에 Mermaid 원본 복원 → mermaid.render()
+        // 5단계: 생성된 SVG를 DOMPurify 2차 살균
+        // 6단계: KaTeX 블록 수식 복원 (katex.renderToString)
+        // 7단계: KaTeX 인라인 수식 렌더링 (renderMathInElement)
+
+        // [v3.0.0 패치] KaTeX 블록 수식($$...$$) placeholder 보호
+        // marked.parse()가 여러 줄 $$...$$ 블록을 <p> 태그로 분리하여
+        // renderMathInElement이 쌍을 인식하지 못하는 문제 방지
+        const katexBlocks = [];
+        const katexProtected = docText.replace(/\$\$([\s\S]*?)\$\$/gm, (match, formula) => {
+            const id = `katex-ph-${Math.random().toString(36).substring(2, 11)}-${katexBlocks.length}`;
+            katexBlocks.push({ id, formula: formula.trim() });
+            return `<div id="${id}" class="katex-placeholder"></div>`;
+        });
+
         const mermaidBlocks = [];
         // Mermaid 코드블록을 placeholder로 교체 (DOMPurify가 삭제하지 않도록 보호)
-        const processedText = docText.replace(/```mermaid\s*\n([\s\S]*?)```/g, (match, code, offset) => {
-            const id = `mermaid-placeholder-${mermaidBlocks.length}`;
+        // [v3.0.0 패치] CommonMark 스펙0~3 스페이스 들여쓰기 허용 + DOM Clobbering 방지 난수 ID
+        const processedText = katexProtected.replace(/^[ ]{0,3}```mermaid\s*\n([\s\S]*?)^[ ]{0,3}```/gm, (match, code, offset) => {
+            const id = `mermaid-ph-${Math.random().toString(36).substring(2, 11)}-${mermaidBlocks.length}`;
             mermaidBlocks.push({ id, code: code.trim() });
             return `<div id="${id}" class="mermaid-placeholder"></div>`;
         });
 
-        // marked 파싱 → DOMPurify 1차 살균 (Mermaid 원본은 이미 placeholder로 보호됨)
+        // marked 파싱 → DOMPurify 1차 살균 (Mermaid/KaTeX 원본은 이미 placeholder로 보호됨)
         const parsedHtml = marked.parse(processedText);
         preview.innerHTML = DOMPurify.sanitize(parsedHtml, {
             ADD_TAGS: ['div'],
@@ -1149,11 +1169,29 @@ async function updateMarkdownPreview() {
             }
         }
 
-        // KaTeX 수식 렌더링 ($...$: 인라인, $$...$$: 블록)
+        // [v3.0.0 패치] KaTeX 블록 수식 복원 (katex.renderToString 직접 렌더링)
+        // marked.parse()에 의한 <p> 분리를 우회하여 여러 줄 블록 수식 정상 렌더링
+        if (katexBlocks.length > 0 && typeof katex !== 'undefined') {
+            for (const block of katexBlocks) {
+                const placeholder = preview.querySelector(`#${block.id}`);
+                if (placeholder) {
+                    try {
+                        // displayMode: true → 중앙 정렬 블록 수식
+                        placeholder.outerHTML = katex.renderToString(block.formula, {
+                            displayMode: true,
+                            throwOnError: false
+                        });
+                    } catch (e) {
+                        placeholder.outerHTML = `<div class="katex-error">⚠️ KaTeX 오류: ${DOMPurify.sanitize(e.message)}</div>`;
+                    }
+                }
+            }
+        }
+
+        // KaTeX 인라인 수식 렌더링 ($...$만 처리, $$...$$ 블록은 위에서 직접 처리 완료)
         if (typeof renderMathInElement !== 'undefined') {
             renderMathInElement(preview, {
                 delimiters: [
-                    { left: '$$', right: '$$', display: true },
                     { left: '$', right: '$', display: false }
                 ],
                 throwOnError: false // 잘못된 수식은 빨간 텍스트로 표시 (크래시 방지)
