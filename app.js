@@ -704,6 +704,24 @@ function getEditorExtensions() {
         wrapConf.of(appData.wordWrap ? EditorView.lineWrapping : []),
         // [v2.8.0] Vim 모드 확장 (Opt-in: 기본 OFF)
         vimConf.of(appData.vimMode ? vim() : []),
+        // [v3.0.0 패치] Mac Vim Normal 모드 Enter 방어
+        // Mac에서 Enter가 newline을 삽입하는 버그 보고 → Normal 모드에서 Enter 기본 동작 차단
+        // cm-vim-mode-normal 클래스로 Vim 상태 감지 (codemirror-vim 내부 CSS 클래스)
+        EditorView.domEventHandlers({
+            keydown(e, view) {
+                if (appData.vimMode && e.key === 'Enter') {
+                    // Vim Normal 모드 감지: codemirror-vim이 에디터에 추가하는 CSS 클래스
+                    const editorEl = view.dom;
+                    const isNormal = editorEl.classList.contains('cm-vim-mode-normal') ||
+                        editorEl.querySelector('.cm-vim-mode-normal');
+                    if (isNormal) {
+                        // Normal 모드에서 Enter 기본 동작(newline) 차단
+                        // Vim 엔진이 자체적으로 커서 이동(j)을 처리하도록 위임
+                        e.preventDefault();
+                    }
+                }
+            }
+        }),
         EditorState.allowMultipleSelections.of(true),
         showMinimap.compute(['doc'], (state) => ({
             create: createMinimap,
@@ -1706,7 +1724,9 @@ function setupEventListeners() {
     });
 
     // Keyboard Shortcuts Override
+    // [v3.0.0 패치] Mac Cmd 키 지원: ctrlKey || metaKey로 크로스 플랫폼 단축키
     document.addEventListener('keydown', (e) => {
+        const modKey = e.ctrlKey || e.metaKey; // Ctrl(Win/Linux) 또는 Cmd(Mac)
         // [3차 감사 3] ESC 키로 젠 모드 탈출
         // [4차 감사 2] 검색/확인 모달이 열려있으면 젠 모드 종료 건너뛰기 (ESC 버블링 충돌 방지)
         if (e.key === 'Escape' && document.body.classList.contains('zen-mode')) {
@@ -1722,10 +1742,10 @@ function setupEventListeners() {
             showStatus(t('msg-zen-exit'));
             return;
         }
-        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't') {
+        if (modKey && e.shiftKey && e.key.toLowerCase() === 't') {
             e.preventDefault();
             undoCloseTab();
-        } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+        } else if (modKey && e.shiftKey && e.key.toLowerCase() === 's') {
             e.preventDefault();
             handleSaveFile(true);
         } else if (e.key === 'F11') {
@@ -1734,7 +1754,7 @@ function setupEventListeners() {
             // [v2.6.0] Ctrl+PageDown(다음 탭) / Ctrl+PageUp(이전 탭) 전환
             // Ctrl+Tab은 브라우저 시스템 단축키로 오버라이딩 불가
             // VS Code 표준 에디터 단축키 사용
-        } else if (e.ctrlKey && (e.key === 'PageDown' || e.key === 'PageUp')) {
+        } else if (modKey && (e.key === 'PageDown' || e.key === 'PageUp')) {
             e.preventDefault();
             const currentIdx = appData.tabs.findIndex(t => t.id === appData.activeTabId);
             if (appData.tabs.length > 1) {
@@ -1748,7 +1768,7 @@ function setupEventListeners() {
                 }
                 switchTab(appData.tabs[nextIdx].id);
             }
-        } else if (e.ctrlKey) {
+        } else if (modKey) {
             switch (e.key.toLowerCase()) {
                 case 's': e.preventDefault(); handleSaveFile(false); break;
                 case 'n': e.preventDefault(); addTab(); break;
@@ -1882,7 +1902,7 @@ function setupSearchController() {
 
     // Override default Ctrl+F
     document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
             e.preventDefault();
             searchModal.classList.remove('hidden');
             searchInput.focus();

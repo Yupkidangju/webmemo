@@ -117,6 +117,10 @@ body.zen-mode .content-area {
     padding: 0 16px;
     flex-shrink: 0;
     overflow-x: auto;
+    overflow-y: hidden;
+    /* [v3.0.0] 모바일 세로 스크롤 차단 */
+    touch-action: pan-x;
+    /* 모바일: 가로 스와이프만 허용, 세로 터치 스크롤 방지 */
     scrollbar-width: none;
 }
 
