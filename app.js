@@ -704,22 +704,68 @@ function getEditorExtensions() {
         wrapConf.of(appData.wordWrap ? EditorView.lineWrapping : []),
         // [v2.8.0] Vim 모드 확장 (Opt-in: 기본 OFF)
         vimConf.of(appData.vimMode ? vim() : []),
-        // [v3.0.0 패치] Mac Vim Normal 모드 Enter 방어
-        // Mac에서 Enter가 newline을 삽입하는 버그 보고 → Normal 모드에서 Enter 기본 동작 차단
-        // cm-vim-mode-normal 클래스로 Vim 상태 감지 (codemirror-vim 내부 CSS 클래스)
+        // [v3.0.0 패치] Mac Vim Enter 방어 + Vim 한글 키맵 프록시
+        // 1. Mac에서 Normal 모드 Enter가 newline을 삽입하는 버그 방어
+        // 2. 한글 입력 상태에서 Vim Normal/Visual 모드 명령어 자동 변환
+        //    예: ㅐ→i, ㅈ→w, ㅁ→a 등 (두벌식 키보드 레이아웃 기준)
         EditorView.domEventHandlers({
             keydown(e, view) {
-                if (appData.vimMode && e.key === 'Enter') {
-                    // Vim Normal 모드 감지: codemirror-vim이 에디터에 추가하는 CSS 클래스
-                    const editorEl = view.dom;
-                    const isNormal = editorEl.classList.contains('cm-vim-mode-normal') ||
-                        editorEl.querySelector('.cm-vim-mode-normal');
-                    if (isNormal) {
-                        // Normal 모드에서 Enter 기본 동작(newline) 차단
-                        // Vim 엔진이 자체적으로 커서 이동(j)을 처리하도록 위임
+                if (!appData.vimMode) return false;
+
+                // Vim 모드 상태 감지: codemirror-vim이 추가하는 CSS 클래스
+                const editorEl = view.dom;
+                const isNormal = editorEl.classList.contains('cm-vim-mode-normal') ||
+                    !!editorEl.querySelector('.cm-vim-mode-normal');
+                const isVisual = editorEl.classList.contains('cm-vim-mode-visual') ||
+                    !!editorEl.querySelector('.cm-vim-mode-visual');
+
+                // [Mac Enter 방어] Normal 모드에서 Enter 기본 동작(newline) 차단
+                if (e.key === 'Enter' && isNormal) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                // [한글 키맵] Normal/Visual 모드에서만 한글→영문 변환
+                // Insert 모드에서는 한글이 그대로 입력되어야 하므로 변환하지 않음
+                if ((isNormal || isVisual) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    // IME 조합 중(composing)이면 건너뛰기
+                    if (e.isComposing || e.keyCode === 229) return false;
+
+                    // 두벌식 한/영 키 매핑 테이블 (자음 + 모음 + Shift 조합)
+                    const koEnMap = {
+                        // 자음 (ㄱ~ㅎ)
+                        'ㅂ': 'q', 'ㅈ': 'w', 'ㄷ': 'e', 'ㄱ': 'r', 'ㅅ': 't',
+                        'ㅛ': 'y', 'ㅕ': 'u', 'ㅑ': 'i', 'ㅐ': 'o', 'ㅔ': 'p',
+                        'ㅁ': 'a', 'ㄴ': 's', 'ㅇ': 'd', 'ㄹ': 'f', 'ㅎ': 'g',
+                        'ㅗ': 'h', 'ㅓ': 'j', 'ㅏ': 'k', 'ㅣ': 'l',
+                        'ㅋ': 'z', 'ㅌ': 'x', 'ㅊ': 'c', 'ㅍ': 'v', 'ㅠ': 'b',
+                        'ㅜ': 'n', 'ㅡ': 'm',
+                        // Shift + 자음 (쌍자음)
+                        'ㅃ': 'Q', 'ㅉ': 'W', 'ㄸ': 'E', 'ㄲ': 'R', 'ㅆ': 'T',
+                        // Shift + 모음
+                        'ㅒ': 'O', 'ㅖ': 'P'
+                    };
+
+                    const mapped = koEnMap[e.key];
+                    if (mapped) {
                         e.preventDefault();
+                        e.stopPropagation();
+                        // 매핑된 영문 키로 새 KeyboardEvent 생성하여 Vim 엔진에 전달
+                        const syntheticEvent = new KeyboardEvent('keydown', {
+                            key: mapped,
+                            code: `Key${mapped.toUpperCase()}`,
+                            keyCode: mapped.toUpperCase().charCodeAt(0),
+                            which: mapped.toUpperCase().charCodeAt(0),
+                            shiftKey: mapped !== mapped.toLowerCase(),
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        editorEl.dispatchEvent(syntheticEvent);
+                        return true; // 이벤트 처리 완료
                     }
                 }
+
+                return false;
             }
         }),
         EditorState.allowMultipleSelections.of(true),
