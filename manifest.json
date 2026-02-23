@@ -1,0 +1,19 @@
+{
+    "name": "WebMemo Pro",
+    "short_name": "WebMemo",
+    "description": "Zero-Install Local Notepad with CodeMirror 6, Vim, Mermaid, KaTeX",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#1e1e1e",
+    "theme_color": "#0078d4",
+    "orientation": "any",
+    "categories": ["productivity", "utilities"],
+    "icons": [
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

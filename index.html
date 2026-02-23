@@ -4,7 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0078d4">
+    <meta name="description" content="Zero-Install Local Notepad with CodeMirror 6, Vim, Mermaid, KaTeX">
     <title>WebMemo Pro</title>
+    <!-- [v3.0.0] PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-512.png">
     <!-- CSS -->
     <link rel="stylesheet" href="styles.css">
 
@@ -247,6 +252,14 @@
 
     <!-- Logic (Dynamic Import workaround for offline double-click) -->
     <script src="app.js"></script>
+    <!-- [v3.0.0] PWA Service Worker 등록 (HTTPS에서만 활성화, file://에서는 무시) -->
+    <script>
+        if ('serviceWorker' in navigator && location.protocol === 'https:') {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('[PWA] Service Worker 등록 완료'))
+                .catch((err) => console.warn('[PWA] SW 등록 실패:', err));
+        }
+    </script>
 </body>
 
 </html>
