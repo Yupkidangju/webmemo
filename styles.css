@@ -542,29 +542,29 @@ body.zen-mode .content-area {
 
 /* 뷰포트 오버레이: 현재 보이는 영역을 반투명 사각형으로 표시 */
 .cm-minimap-overlay {
-    background-color: rgba(0, 120, 212, 0.15) !important;
-    border: 1px solid rgba(0, 120, 212, 0.3) !important;
+    background-color: rgba(0, 120, 212, 0.3) !important;
+    border: 1px solid rgba(0, 120, 212, 0.5) !important;
     border-radius: 2px;
     transition: background-color 0.15s ease;
 }
 
 /* 오버레이 호버 시 더 진한 강조 */
 .cm-minimap-overlay:hover {
-    background-color: rgba(0, 120, 212, 0.25) !important;
+    background-color: rgba(0, 120, 212, 0.4) !important;
 }
 
 /* 다크 테마 계열 미니맵 오버레이 색상 조정 */
 [data-theme="dark"] .cm-minimap-overlay,
 [data-theme="monokai"] .cm-minimap-overlay,
 [data-theme="solarized-dark"] .cm-minimap-overlay {
-    background-color: rgba(100, 180, 255, 0.12) !important;
-    border-color: rgba(100, 180, 255, 0.25) !important;
+    background-color: rgba(100, 180, 255, 0.25) !important;
+    border-color: rgba(100, 180, 255, 0.4) !important;
 }
 
 [data-theme="dark"] .cm-minimap-overlay:hover,
 [data-theme="monokai"] .cm-minimap-overlay:hover,
 [data-theme="solarized-dark"] .cm-minimap-overlay:hover {
-    background-color: rgba(100, 180, 255, 0.22) !important;
+    background-color: rgba(100, 180, 255, 0.35) !important;
 }
 
 /* Monokai 테마 미니맵 특수 강조 (형광 그린 포인트) */
