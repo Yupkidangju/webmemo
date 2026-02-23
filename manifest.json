@@ -1,6 +1,6 @@
 {
     "name": "WebMemo Pro",
-    "short_name": "WebMemo",
+    "short_name": "WebMemo Pro",
     "description": "Zero-Install Local Notepad with CodeMirror 6, Vim, Mermaid, KaTeX — works completely offline",
     "start_url": "./index.html",
     "id": "/webmemo/",
