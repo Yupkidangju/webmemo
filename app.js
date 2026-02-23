@@ -10,6 +10,8 @@ let closeBrackets;
 let showMinimap;
 // [v2.8.0] Vim 에뮬레이터 (@replit/codemirror-vim)
 let vim;
+let Vim; // [v3.0.0] Vim API 전역 참조 (handleKey용)
+let getCM; // [v3.0.0] CM6 EditorView → Vim adapter 변환 함수
 
 let languageConf;
 let readOnlyConf;
@@ -51,7 +53,8 @@ async function loadCM6() {
     // Normal/Insert/Visual 모드, :w, :q 등 Vim 커맨드 지원
     const vimModule = await import("https://esm.sh/@replit/codemirror-vim");
     vim = vimModule.vim;
-    const Vim = vimModule.Vim;
+    Vim = vimModule.Vim;
+    getCM = vimModule.getCM; // EditorView → CodeMirror adapter
 
     // [v2.8.0 패치] Vim :w/:wq 커맨드 → WebMemo 네이티브 저장 브릿지
     // Vim 유저가 습관적으로 :w 입력 시 handleSaveFile() 호출
@@ -704,67 +707,16 @@ function getEditorExtensions() {
         wrapConf.of(appData.wordWrap ? EditorView.lineWrapping : []),
         // [v2.8.0] Vim 모드 확장 (Opt-in: 기본 OFF)
         vimConf.of(appData.vimMode ? vim() : []),
-        // [v3.0.0 패치] Mac Vim Enter 방어 + Vim 한글 키맵 프록시
-        // 1. Mac에서 Normal 모드 Enter가 newline을 삽입하는 버그 방어
-        // 2. 한글 입력 상태에서 Vim Normal/Visual 모드 명령어 자동 변환
-        //    예: ㅐ→i, ㅈ→w, ㅁ→a 등 (두벌식 키보드 레이아웃 기준)
+        // [v3.0.0 패치] Mac Vim Normal 모드 Enter 방어
         EditorView.domEventHandlers({
             keydown(e, view) {
-                if (!appData.vimMode) return false;
-
-                // Vim 모드 상태 감지: codemirror-vim이 추가하는 CSS 클래스
-                const editorEl = view.dom;
-                const isNormal = editorEl.classList.contains('cm-vim-mode-normal') ||
-                    !!editorEl.querySelector('.cm-vim-mode-normal');
-                const isVisual = editorEl.classList.contains('cm-vim-mode-visual') ||
-                    !!editorEl.querySelector('.cm-vim-mode-visual');
-
-                // [Mac Enter 방어] Normal 모드에서 Enter 기본 동작(newline) 차단
-                if (e.key === 'Enter' && isNormal) {
+                if (!appData.vimMode || !getCM) return false;
+                const cmAdapter = getCM(view);
+                const vimState = cmAdapter?.state?.vim;
+                if (vimState && !vimState.insertMode && e.key === 'Enter') {
                     e.preventDefault();
                     return false;
                 }
-
-                // [한글 키맵] Normal/Visual 모드에서만 한글→영문 변환
-                // Insert 모드에서는 한글이 그대로 입력되어야 하므로 변환하지 않음
-                if ((isNormal || isVisual) && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                    // IME 조합 중(composing)이면 건너뛰기
-                    if (e.isComposing || e.keyCode === 229) return false;
-
-                    // 두벌식 한/영 키 매핑 테이블 (자음 + 모음 + Shift 조합)
-                    const koEnMap = {
-                        // 자음 (ㄱ~ㅎ)
-                        'ㅂ': 'q', 'ㅈ': 'w', 'ㄷ': 'e', 'ㄱ': 'r', 'ㅅ': 't',
-                        'ㅛ': 'y', 'ㅕ': 'u', 'ㅑ': 'i', 'ㅐ': 'o', 'ㅔ': 'p',
-                        'ㅁ': 'a', 'ㄴ': 's', 'ㅇ': 'd', 'ㄹ': 'f', 'ㅎ': 'g',
-                        'ㅗ': 'h', 'ㅓ': 'j', 'ㅏ': 'k', 'ㅣ': 'l',
-                        'ㅋ': 'z', 'ㅌ': 'x', 'ㅊ': 'c', 'ㅍ': 'v', 'ㅠ': 'b',
-                        'ㅜ': 'n', 'ㅡ': 'm',
-                        // Shift + 자음 (쌍자음)
-                        'ㅃ': 'Q', 'ㅉ': 'W', 'ㄸ': 'E', 'ㄲ': 'R', 'ㅆ': 'T',
-                        // Shift + 모음
-                        'ㅒ': 'O', 'ㅖ': 'P'
-                    };
-
-                    const mapped = koEnMap[e.key];
-                    if (mapped) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        // 매핑된 영문 키로 새 KeyboardEvent 생성하여 Vim 엔진에 전달
-                        const syntheticEvent = new KeyboardEvent('keydown', {
-                            key: mapped,
-                            code: `Key${mapped.toUpperCase()}`,
-                            keyCode: mapped.toUpperCase().charCodeAt(0),
-                            which: mapped.toUpperCase().charCodeAt(0),
-                            shiftKey: mapped !== mapped.toLowerCase(),
-                            bubbles: true,
-                            cancelable: true
-                        });
-                        editorEl.dispatchEvent(syntheticEvent);
-                        return true; // 이벤트 처리 완료
-                    }
-                }
-
                 return false;
             }
         }),
@@ -829,6 +781,76 @@ function initCodeMirror() {
     });
     // CM6 에디터로 대체되므로 원본 textarea 숨김
     editorTextarea.style.display = 'none';
+
+    // [v3.0.0] Vim 한글 키맵 프록시 (capture 단계 리스너)
+    // CM6 내부(domEventHandlers)는 keyCode 229(IME) 이벤트를 삼키므로
+    // 에디터 DOM에 직접 capture:true로 걸어 CM6보다 먼저 가로챔
+    // 원리: e.code(물리적 키 위치)로 영문 키를 판별, Object.defineProperty로
+    //       이벤트의 key/keyCode를 영문으로 바꿔 CM6/Vim이 자연스럽게 처리
+    cm.dom.addEventListener('keydown', (e) => {
+        // [v3.0.0] Vim 한글 키맵 프록시 (capture 단계)
+        // CM6는 keyCode 229(IME) 이벤트를 내부적으로 삼키므로
+        // Vim.handleKey() API로 Vim 엔진에 직접 키를 주입
+        if (!appData.vimMode || !Vim || e.keyCode !== 229) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        // Vim 내부 상태로 모드 감지 (CSS 클래스는 버전마다 다를 수 있음)
+        const cmAdapter = getCM ? getCM(cm) : null;
+        const vimState = cmAdapter?.state?.vim;
+        if (!vimState) return; // Vim 상태 없음 → 무시
+
+        // insertMode=true → Insert 모드 (한글 그대로 입력해야 함)
+        // visualMode=true → Visual 모드 (명령어 변환 필요)
+        // 둘 다 false → Normal 모드 (명령어 변환 필요)
+        const isNormal = !vimState.insertMode && !vimState.visualMode;
+        const isVisual = !!vimState.visualMode;
+
+        if (!isNormal && !isVisual) return;
+
+        // 물리적 키 위치(e.code) → 영문 Vim 명령어 매핑
+        const codeToVim = {
+            'KeyQ': 'q', 'KeyW': 'w', 'KeyE': 'e', 'KeyR': 'r', 'KeyT': 't',
+            'KeyY': 'y', 'KeyU': 'u', 'KeyI': 'i', 'KeyO': 'o', 'KeyP': 'p',
+            'KeyA': 'a', 'KeyS': 's', 'KeyD': 'd', 'KeyF': 'f', 'KeyG': 'g',
+            'KeyH': 'h', 'KeyJ': 'j', 'KeyK': 'k', 'KeyL': 'l',
+            'Semicolon': ';', 'Quote': "'",
+            'KeyZ': 'z', 'KeyX': 'x', 'KeyC': 'c', 'KeyV': 'v', 'KeyB': 'b',
+            'KeyN': 'n', 'KeyM': 'm',
+            'Comma': ',', 'Period': '.', 'Slash': '/',
+            'Digit0': '0', 'Digit1': '1', 'Digit2': '2', 'Digit3': '3',
+            'Digit4': '4', 'Digit5': '5', 'Digit6': '6', 'Digit7': '7',
+            'Digit8': '8', 'Digit9': '9',
+            'Minus': '-', 'Equal': '=',
+            'BracketLeft': '[', 'BracketRight': ']',
+            'Backslash': '\\', 'Backquote': '`',
+            'Space': ' ', 'Escape': 'Escape'
+        };
+        const shiftCodeToVim = {
+            'KeyQ': 'Q', 'KeyW': 'W', 'KeyE': 'E', 'KeyR': 'R', 'KeyT': 'T',
+            'KeyY': 'Y', 'KeyU': 'U', 'KeyI': 'I', 'KeyO': 'O', 'KeyP': 'P',
+            'KeyA': 'A', 'KeyS': 'S', 'KeyD': 'D', 'KeyF': 'F', 'KeyG': 'G',
+            'KeyH': 'H', 'KeyJ': 'J', 'KeyK': 'K', 'KeyL': 'L',
+            'Semicolon': ':', 'Quote': '"',
+            'KeyZ': 'Z', 'KeyX': 'X', 'KeyC': 'C', 'KeyV': 'V', 'KeyB': 'B',
+            'KeyN': 'N', 'KeyM': 'M',
+            'Comma': '<', 'Period': '>', 'Slash': '?',
+            'Digit1': '!', 'Digit2': '@', 'Digit3': '#', 'Digit4': '$',
+            'Digit5': '%', 'Digit6': '^', 'Digit7': '&', 'Digit8': '*',
+            'Digit9': '(', 'Digit0': ')',
+            'Minus': '_', 'Equal': '+',
+            'BracketLeft': '{', 'BracketRight': '}',
+            'Backslash': '|', 'Backquote': '~'
+        };
+
+        const mapped = e.shiftKey ? shiftCodeToVim[e.code] : codeToVim[e.code];
+        if (mapped) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            // Vim 엔진에 직접 키 주입 — DOM 이벤트 시스템 완전 우회
+            const cmAdapter = getCM ? getCM(cm) : cm;
+            Vim.handleKey(cmAdapter, mapped);
+        }
+    }, true); // capture: true — CM6보다 먼저 실행
 }
 function updateStats() {
     const text = cm.state.doc.toString();
