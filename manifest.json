@@ -30,7 +30,7 @@
     "screenshots": [
         {
             "src": "icons/screenshot-desktop.png",
-            "sizes": "1280x800",
+            "sizes": "1264x705",
             "type": "image/png",
             "form_factor": "wide",
             "label": "WebMemo Pro — Markdown editor with live preview, TOC, code highlighting, and KaTeX math rendering"
