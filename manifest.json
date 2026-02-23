@@ -1,19 +1,52 @@
 {
     "name": "WebMemo Pro",
     "short_name": "WebMemo",
-    "description": "Zero-Install Local Notepad with CodeMirror 6, Vim, Mermaid, KaTeX",
+    "description": "Zero-Install Local Notepad with CodeMirror 6, Vim, Mermaid, KaTeX — works completely offline",
     "start_url": "./index.html",
+    "id": "/webmemo/",
     "display": "standalone",
     "background_color": "#1e1e1e",
     "theme_color": "#0078d4",
     "orientation": "any",
-    "categories": ["productivity", "utilities"],
+    "categories": [
+        "productivity",
+        "utilities"
+    ],
+    "prefer_related_applications": false,
     "icons": [
         {
             "src": "icons/icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "icons/screenshot-desktop.png",
+            "sizes": "1280x800",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "WebMemo Pro — Markdown editor with live preview, TOC, code highlighting, and KaTeX math rendering"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "New Document",
+            "short_name": "New",
+            "url": "./index.html",
+            "icons": [
+                {
+                    "src": "icons/icon-512.png",
+                    "sizes": "512x512"
+                }
+            ]
         }
     ]
 }
