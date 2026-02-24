@@ -1898,34 +1898,58 @@ function setupEventListeners() {
     });
     // dragover는 브라우저 기본 동작 방지 전용
     document.addEventListener('dragover', (e) => e.preventDefault());
-    document.addEventListener('drop', (e) => {
+    document.addEventListener('drop', async (e) => {
         e.preventDefault();
         dragCounter = 0; // 드롭 시 카운터 리셋
         contentArea.classList.remove('file-drop-active');
-        const files = e.dataTransfer.files;
-        if (!files || files.length === 0) return;
 
-        // [7차 감사 2] 다중 파일 드롭 레이스 컨디션 방지
-        // 각 FileReader.onload에서 addTab이 반환하는 tabId를 캐처하여
-        // 해당 탭으로 switchTab 후 구문 감지 (활성 탭에 의존하지 않음)
-        Array.from(files).forEach(file => {
-            const textExtensions = ['txt', 'md', 'markdown', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'htm', 'xml', 'json', 'py', 'java', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sh', 'bat', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'log', 'csv', 'sql', 'svg'];
+        const items = e.dataTransfer.items;
+        if (!items || items.length === 0) return;
+
+        // [v3.0.1] 드래그&드롭 시 FileSystemFileHandle 획득
+        // getAsFileSystemHandle()이 지원되면 파일 위치를 기억하여
+        // Ctrl+S 시 동일 파일에 바로 덮어쓰기 가능 (Open과 동일 동작)
+        // 미지원 브라우저에서는 기존 FileReader fallback (handle=null)
+        const textExtensions = ['txt', 'md', 'markdown', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'htm', 'xml', 'json', 'py', 'java', 'c', 'cpp', 'h', 'rs', 'go', 'rb', 'php', 'sh', 'bat', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'log', 'csv', 'sql', 'svg'];
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind !== 'file') continue;
+
+            // FileSystemFileHandle 획득 시도 (Chromium 86+)
+            let handle = null;
+            if (item.getAsFileSystemHandle) {
+                try {
+                    handle = await item.getAsFileSystemHandle();
+                    // 디렉토리가 드롭된 경우 무시
+                    if (handle.kind !== 'file') {
+                        handle = null;
+                        continue;
+                    }
+                } catch (err) {
+                    // 권한 거부 등 예외 시 fallback
+                    handle = null;
+                }
+            }
+
+            // 파일 내용 읽기: handle이 있으면 handle.getFile(), 없으면 item.getAsFile()
+            const file = handle ? await handle.getFile() : item.getAsFile();
+            if (!file) continue;
+
             const ext = file.name.split('.').pop().toLowerCase();
             const isText = file.type.startsWith('text/') || textExtensions.includes(ext);
             if (!isText) {
                 showStatus(`⚠️ ${file.name}: ${t('msg-text-only')}`);
-                return;
+                continue;
             }
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const newTabId = addTab(file.name, ev.target.result, 'text/plain');
-                // 해당 탭으로 명시적 전환 후 구문 감지 (레이스 컨디션 방지)
-                if (newTabId) switchTab(newTabId);
-                autoDetectSyntax(file.name);
-                showStatus(`📂 ${file.name} 열림`);
-            };
-            reader.readAsText(file);
-        });
+
+            const content = await file.text();
+            // handle 전달 → Ctrl+S 시 동일 파일에 바로 저장
+            const newTabId = addTab(file.name, content, 'text/plain', handle);
+            if (newTabId) switchTab(newTabId);
+            autoDetectSyntax(file.name);
+            showStatus(`📂 ${file.name} 열림`);
+        }
     });
 
     // Confirm Modal Events
