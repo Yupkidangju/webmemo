@@ -2,6 +2,11 @@
 
 모든 프로젝트의 변경 사항은 이 파일에 기록됩니다. 본 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/) 규격을 따릅니다.
 
+## [v3.0.1] - 2026-02-28
+### Fixed (수정됨)
+- **파일 드래그앤드롭 이벤트 충돌 및 확장자 인식 개선**: `.cursor`, `.gitignore` 등 닷파일과 확장자가 없는 파일(예: `Makefile`)의 드롭을 정상 텍스트로 인식하도록 조건 개선. 드롭 이벤트 리스너에 `e.stopPropagation()` 추가 및 캡처링(`true`)을 적용해 CodeMirror 기본 삽입 동작과의 충돌 방어.
+- **과도한 중복 렌더링(State Thrashing) 제거**: 드롭 핸들러 내부의 중복된 `switchTab`, `autoDetectSyntax` 호출 등 잉여 코드를 제거하고, `addTab` 함수 내부에서의 구문 강조 실행 조건을 옵티마이즈하여 중복 렌더링 부하 해소.
+
 ## [v3.0.0] - 2026-02-22
 ### Added (추가됨) - 시각 렌더링 엔진
 - **Mermaid 다이어그램 렌더링**: `mermaid.js` v11.12.3 CDN 로딩. 마크다운 프리뷰에서 ` ```mermaid ` 코드블록을 13종+ 다이어그램(순서도, 시퀀스, 간트, 클래스, 상태, ER, 파이, 마인드맵, 타임라인 등)으로 실시간 SVG 렌더링. 테마 전환 시 다크/라이트 자동 연동. **이중 살균(Double Sanitize) 보안 패턴** 적용 — DOMPurify 1차 살균 후 Mermaid SVG 출력을 2차 살균하여 SVG 내 스크립트 주입 원천 차단.

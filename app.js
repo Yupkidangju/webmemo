@@ -1070,7 +1070,9 @@ function addTab(title = null, content = '', lang = 'text/plain', handle = null) 
     renderTabs();
     loadActiveTabContent();
     saveToStorage();
-    if (handle) autoDetectSyntax(title || defaultTitle);
+    if (title && title !== defaultTitle) {
+        autoDetectSyntax(title);
+    }
     cm.focus();
     return newTab.id; // [7차 감사 2] 다중 파일 드롭 레이스 컨디션 방지용
 }
@@ -1900,6 +1902,7 @@ function setupEventListeners() {
     document.addEventListener('dragover', (e) => e.preventDefault());
     document.addEventListener('drop', async (e) => {
         e.preventDefault();
+        e.stopPropagation(); // CodeMirror의 기본 파일 삽입 동작 원천 차단
         dragCounter = 0; // 드롭 시 카운터 리셋
         contentArea.classList.remove('file-drop-active');
 
@@ -1937,7 +1940,10 @@ function setupEventListeners() {
             if (!file) continue;
 
             const ext = file.name.split('.').pop().toLowerCase();
-            const isText = file.type.startsWith('text/') || textExtensions.includes(ext);
+            const isDotFile = file.name.startsWith('.'); // .cursor, .gitignore 등 허용
+            const isNoExt = !file.name.includes('.');    // Makefile 등 허용
+
+            const isText = file.type.startsWith('text/') || textExtensions.includes(ext) || isDotFile || isNoExt;
             if (!isText) {
                 showStatus(`⚠️ ${file.name}: ${t('msg-text-only')}`);
                 continue;
@@ -1945,12 +1951,10 @@ function setupEventListeners() {
 
             const content = await file.text();
             // handle 전달 → Ctrl+S 시 동일 파일에 바로 저장
-            const newTabId = addTab(file.name, content, 'text/plain', handle);
-            if (newTabId) switchTab(newTabId);
-            autoDetectSyntax(file.name);
+            addTab(file.name, content, 'text/plain', handle);
             showStatus(`📂 ${file.name} 열림`);
         }
-    });
+    }, true);
 
     // Confirm Modal Events
     document.getElementById('btn-confirm-save').addEventListener('click', async () => {

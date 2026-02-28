@@ -21,6 +21,9 @@
 - **5개국어 i18n**: 한국어, English, 日本語, 繁體中文, 简体中文 UI 완벽 지원.
 - **🔒 이중 살균 보안**: SRI 해시 고정, DOMPurify 이중 살균 파이프라인(HTML+SVG), DOM-XSS 방지, 비동기 렌더링 레이스 컨디션 방어. AI 크로스 감사 6라운드 통과.
 
+### 문제 해결 (Troubleshooting)
+- **드래그 앤 드롭으로 닷파일(.cursor, .gitignore 등)이 열리지 않는 문제**: v3.0.1부터 확장자 없는 파일 및 닷파일도 정상적으로 인식되어 텍스트 에디터로 열립니다. 다중 파일 드롭 시 발생하던 과도한 렌더링 부하도 해소되었습니다.
+
 ---
 ## 🇺🇸 English
 A pure local notepad application perfectly operating in a web browser without a server.
@@ -41,6 +44,9 @@ A pure local notepad application perfectly operating in a web browser without a 
 - **🖥️ Cross-Platform**: Windows (Ctrl), Mac (Cmd), Linux — all shortcuts auto-adapt per platform.
 - **5-Language i18n**: Korean, English, Japanese, Traditional Chinese, Simplified Chinese UI.
 - **🔒 Double-Sanitize Security**: SRI hash pinning, DOMPurify double sanitization pipeline (HTML+SVG), DOM-XSS prevention, async render race condition defense. 6-round AI cross-audit passed.
+
+### Troubleshooting
+- **Drag & Drop for Dotfiles (e.g., .cursor)**: Starting from v3.0.1, dotfiles and extensionless files are natively recognized and opened as text. Heavy duplicate rendering performance issues on dropping multiple files have also been resolved.
 
 ---
 ## 🇯🇵 日本語
@@ -63,6 +69,9 @@ A pure local notepad application perfectly operating in a web browser without a 
 - **5言語i18n**: 韓国語、英語、日本語、繁体字中国語、簡体字中国語UI完全対応。
 - **🔒 二重サニタイズセキュリティ**: SRIハッシュ固定、DOMPurify二重消毒、DOM-XSS防止。AI 6ラウンド監査済。
 
+### トラブルシューティング (Troubleshooting)
+- **ドットファイル(.cursor等)のドラッグ＆ドロップ**: v3.0.1から、拡張子のないファイルやドットファイルも正常にテキストとして認識され開かれます。複数ファイルドロップ時の重複レンダリング負荷も解消されました。
+
 ---
 ## 🇹🇼 繁體中文
 不需伺服器，可在網頁瀏覽器中完美運作的本機記事本應用程式。
@@ -84,6 +93,9 @@ A pure local notepad application perfectly operating in a web browser without a 
 - **5 語言 i18n**: 韓文、英文、日文、繁體中文、簡體中文 UI 完整支援。
 - **🔒 雙重消毒安全**: SRI 雜湊固定、DOMPurify 雙重消毒管線、DOM-XSS 防禦。AI 6 輪交叉審計通過。
 
+### 疑難排解 (Troubleshooting)
+- **拖放點檔案（如 .cursor）**: 從 v3.0.1 開始，無副檔名及點檔案皆可正常識別為純文字開啟。同時也解決了多檔案拖放時重複渲染的效能問題。
+
 ---
 ## 🇨🇳 简体中文
 无需服务器即可在 Web 浏览器中直接运行的纯本地记事本应用程序。
@@ -104,3 +116,6 @@ A pure local notepad application perfectly operating in a web browser without a 
 - **🖥️ 跨平台**: Windows(Ctrl)、Mac(Cmd)、Linux 快捷键自动适配。
 - **5 语言 i18n**: 韩语、英语、日语、繁体中文、简体中文 UI 完整支持。
 - **🔒 双重消毒安全**: SRI 哈希固定、DOMPurify 双重消毒管线、DOM-XSS 防御。AI 6 轮交叉审计通过。
+
+### 疑难解答 (Troubleshooting)
+- **拖放点文件（如 .cursor）**: 从 v3.0.1 开始，无扩展名文件及点文件均可正常识别为纯文本打开。同时也解决了多文件拖放时重复渲染的性能问题。
